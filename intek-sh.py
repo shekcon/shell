@@ -2,6 +2,7 @@
 import os
 from subprocess import Popen, PIPE
 from sys import exit as exit_program
+from globbing import glob_string
 
 
 def builtins_cd(directory=''):  # implement cd
@@ -83,8 +84,8 @@ def builtins_unset(variables=[]):  # implement unset
     for variable in variables:
         if not check_name(variable):
             exit_value = 1
-            errors.append(
-                'intek-sh: unset: `%s\': not a valid identifier\n' % variable)
+            errors.append('intek-sh: unset: `%s\': not a valid identifier\n'
+                          % variable)
         elif variable in os.environ:
             os.environ.pop(variable)
     return exit_value, '\n'.join(errors)
@@ -147,6 +148,8 @@ def run_command(command, args=[]):
 
 
 def handle_exit_status(string):
+    if '*' in string or '?' in string:
+        string = glob_string(string)
     command = string.split()[0]
     args = string[len(command):].split()
     exit_value, output = run_command(command, args)
