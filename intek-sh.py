@@ -2,6 +2,7 @@
 import os
 from subprocess import Popen, PIPE
 from sys import exit as exit_program
+from globbing import glob_string
 
 
 def builtins_cd(directory=''):  # implement cd
@@ -10,32 +11,35 @@ def builtins_cd(directory=''):  # implement cd
             os.environ['OLDPWD'] = os.getcwd()
             os.chdir(directory)  # change working directory
             os.environ['PWD'] = os.getcwd()
-            output = ''
+            exit_value, output = 0, ''
         except FileNotFoundError:
-            output = ('intek-sh: cd: %s: No such file or directory\n'
-                      % (directory))
+            exit_value, output = 1, 'intek-sh: cd: %s: No ' \
+                'such file or directory\n' % directory
     else:  # if variable directory is empty, change working dir into homepath
         if 'HOME' not in os.environ:
-            output = 'intek-sh: cd: HOME not set'
+            exit_value, output = 1, 'intek-sh: cd: HOME not set'
         else:
             os.environ['OLDPWD'] = os.getcwd()
             homepath = os.environ['HOME']
             os.chdir(homepath)
             os.environ['PWD'] = os.getcwd()
-            output = ''
-    return output
+            exit_value, output = 0, ''
+    return exit_value, output
 
 
-def builtins_printenv(variables=''):  # implement printenv
+def builtins_printenv(variables=[]):  # implement printenv
+    exit_value = 0
     output_lines = []
     if variables:
-        for variable in variables.split():
+        for variable in variables:
             if variable in os.environ:
                 output_lines.append(os.environ[variable])
+            else:
+                exit_value = 1
     else:  # if variable is empty, print all envs
         for key, value in os.environ.items():
             output_lines.append(key + '=' + value)
-    return '\n'.join(output_lines)
+    return exit_value, '\n'.join(output_lines)
 
 
 def check_name(name):
@@ -48,10 +52,11 @@ def check_name(name):
     return True
 
 
-def builtins_export(variables=''):  # implement export
+def builtins_export(variables=[]):  # implement export
+    exit_value = 0
     if variables:
         errors = []
-        for variable in variables.split():
+        for variable in variables:
             if '=' in variable:
                 name, value = variable.split('=', 1)
             else:  # if variable stands alone, set its value as ''
@@ -60,6 +65,7 @@ def builtins_export(variables=''):  # implement export
             if check_name(name):
                 os.environ[name] = value
             else:
+                exit_value = 1
                 errors.append('intek-sh: export: `%s\': '
                               'not a valid identifier\n' % variable)
         output = '\n'.join(errors)
@@ -69,23 +75,25 @@ def builtins_export(variables=''):  # implement export
         for line in env:
             result.append('declare -x ' + line.replace('=', '=\"', 1) + '\"')
         output = '\n'.join(result)
-    return output
+    return exit_value, output
 
 
-def builtins_unset(variables=''):  # implement unset
+def builtins_unset(variables=[]):  # implement unset
+    exit_value = 0
     errors = []
-    for variable in variables.split():
+    for variable in variables:
         if not check_name(variable):
+            exit_value = 1
             errors.append('intek-sh: unset: `%s\': not a valid identifier\n'
                           % variable)
         elif variable in os.environ:
             os.environ.pop(variable)
-    return '\n'.join(errors)
+    return exit_value, '\n'.join(errors)
 
 
 def builtins_exit(exit_code):  # implement exit
-    exit_value = 0
     print('exit')
+    exit_value = 0
     if exit_code:
         if exit_code.isdigit():
             exit_value = int(exit_code)
@@ -94,67 +102,70 @@ def builtins_exit(exit_code):  # implement exit
     exit_program(exit_value)
 
 
-def run_command(command, whatever=[]):
+def run_executions(command, args):
     output = []
-    builtins = ('cd', 'printenv', 'export', 'unset')
-    if command in builtins:
-        if command == 'cd':
-            return builtins_cd(' '.join(whatever))
-        elif command == 'printenv':
-            return builtins_printenv(' '.join(whatever))
-        elif command == 'export':
-            return builtins_export(' '.join(whatever))
-        elif command == 'unset':
-            return builtins_unset(' '.join(whatever))
-    if '/' in command:
-        try:
-            process = Popen([command]+whatever, stdout=PIPE, stderr=PIPE)
-            out, err = process.communicate()  # byte
-            process.wait()
-            if err:
-                output.append(err.decode())
-            if out:
-                output.append(out.decode())
-        except PermissionError:
-            output.append('intek-sh: %s: Permission denied\n' % command)
-        except FileNotFoundError:
-            output.append('intek-sh: %s: command not found\n' % command)
+    try:
+        process = Popen([command]+args, stdout=PIPE, stderr=PIPE)
+        out, err = process.communicate()  # byte
+        process.wait()
+        exit_value = process.returncode
+        if err:
+            output.append(err.decode())
+        if out:
+            output.append(out.decode())
+    except PermissionError:
+        exit_value = 126
+        output.append('intek-sh: %s: Permission denied\n' % command)
+    except FileNotFoundError:
+        exit_value = 127
+        output.append('intek-sh: %s: command not found\n' % command)
+    except OSError:
+        exit_value = 127
+        output.append("intek-sh: %s: cannot execute binary file\n" % command)
+    return exit_value, '\n'.join(output)
+
+
+def run_command(command, args=[]):
+    if command == 'cd':
+        return builtins_cd(' '.join(args))
+    elif command == 'printenv':
+        return builtins_printenv(args)
+    elif command == 'export':
+        return builtins_export(args)
+    elif command == 'unset':
+        return builtins_unset(args)
+    elif command == 'exit':
+        return builtins_exit(' '.join(args))
+    elif '/' in command:
+        return run_executions(command, args)
     elif 'PATH' in os.environ:
         paths = os.environ['PATH'].split(':')
-        not_found = True
         for path in paths:
             realpath = path + '/' + command
             if os.path.exists(realpath):
-                not_found = False
-                process = Popen([realpath]+whatever, stdout=PIPE, stderr=PIPE)
-                out, err = process.communicate()  # byte
-                process.wait()
-                if err:
-                    output.append(err.decode())
-                if out:
-                    output.append(out.decode())
-                break
-        if not_found:
-            output.append('intek-sh: %s: command not found\n' % command)
-    else:
-        output.append('intek-sh: %s: command not found\n' % command)
-    return '\n'.join(output)
+                return run_executions(realpath, args)
+    return 127, 'intek-sh: %s: command not found\n' % command
+
+
+def handle_exit_status(string):
+    if '*' in string or '?' in string:
+        string = glob_string(string)
+    command = string.split()[0]
+    args = string[len(command):].split()
+    exit_value, output = run_command(command, args)
+    os.environ['?'] = str(exit_value)
+    return output
 
 
 def main():
     while True:
         try:
             input_user = input('intek-sh$ ')
-            command = input_user.split()[0]
-            args = input_user[len(command):].split()
-            if command == 'exit':
-                break
-            print(run_command(command, args), end='')
+            print(handle_exit_status(input_user), end='')
         except IndexError:
             pass
         except EOFError:
             break
-    builtins_exit(' '.join(args))
 
 
 if __name__ == '__main__':

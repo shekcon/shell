@@ -28,8 +28,7 @@ def glob_string(string):
     tokens = string.split()
     for i, token in enumerate(tokens):
         if '*' in token or '?' in token:
-            tokens[i] = ' '.join(globbing(token))
+            result = globbing(token)
+            if result:
+                tokens[i] = ' '.join(result)
     return ' '.join(tokens)
-
-# print(globbing('../.*/'))
-# print(glob_string('echo *'))
