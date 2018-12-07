@@ -118,6 +118,9 @@ def run_executions(command, args):
     except FileNotFoundError:
         exit_value = 127
         output.append('intek-sh: %s: command not found\n' % command)
+    except OSError:
+        exit_value = 127
+        output.append("intek-sh: %s: cannot execute binary file\n" % command)
     return exit_value, '\n'.join(output)
 
 
