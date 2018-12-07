@@ -94,51 +94,42 @@ def builtins_exit(exit_code):  # implement exit
     exit_program(exit_value)
 
 
-def run_command(command, whatever=[]):
+def run_executions(command, args):
     output = []
-    builtins = ('cd', 'printenv', 'export', 'unset')
-    if command in builtins:
-        if command == 'cd':
-            return builtins_cd(' '.join(whatever))
-        elif command == 'printenv':
-            return builtins_printenv(' '.join(whatever))
-        elif command == 'export':
-            return builtins_export(' '.join(whatever))
-        elif command == 'unset':
-            return builtins_unset(' '.join(whatever))
-    if '/' in command:
-        try:
-            process = Popen([command]+whatever, stdout=PIPE, stderr=PIPE)
-            out, err = process.communicate()  # byte
-            process.wait()
-            if err:
-                output.append(err.decode())
-            if out:
-                output.append(out.decode())
-        except PermissionError:
-            output.append('intek-sh: %s: Permission denied\n' % command)
-        except FileNotFoundError:
-            output.append('intek-sh: %s: command not found\n' % command)
+    try:
+        process = Popen([command]+args, stdout=PIPE, stderr=PIPE)
+        out, err = process.communicate()  # byte
+        process.wait()
+        exit_value = process.returncode
+        if err:
+            output.append(err.decode())
+        if out:
+            output.append(out.decode())
+    except PermissionError:
+        output.append('intek-sh: %s: Permission denied\n' % command)
+    except FileNotFoundError:
+        output.append('intek-sh: %s: command not found\n' % command)
+    return '\n'.join(output)
+
+
+def run_command(command, args=[]):
+    if command == 'cd':
+        return builtins_cd(' '.join(args))
+    elif command == 'printenv':
+        return builtins_printenv(''.join(args))
+    elif command == 'export':
+        return builtins_export(''.join(args))
+    elif command == 'unset':
+        return builtins_unset(''.join(args))
+    elif '/' in command:
+        return run_executions(command, args)
     elif 'PATH' in os.environ:
         paths = os.environ['PATH'].split(':')
-        not_found = True
         for path in paths:
             realpath = path + '/' + command
             if os.path.exists(realpath):
-                not_found = False
-                process = Popen([realpath]+whatever, stdout=PIPE, stderr=PIPE)
-                out, err = process.communicate()  # byte
-                process.wait()
-                if err:
-                    output.append(err.decode())
-                if out:
-                    output.append(out.decode())
-                break
-        if not_found:
-            output.append('intek-sh: %s: command not found\n' % command)
-    else:
-        output.append('intek-sh: %s: command not found\n' % command)
-    return '\n'.join(output)
+                return run_executions(realpath, args)
+    return 'intek-sh: %s: command not found\n' % command
 
 
 def main():
