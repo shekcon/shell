@@ -3,6 +3,61 @@ import os
 from subprocess import Popen, PIPE
 from sys import exit as exit_program
 from globbing import glob_string
+from parse_command_shell import Token
+
+
+def handle_logic_op(string, operator=None):
+    '''
+    Tasks:
+    - First get step need to do from parse command operator
+    - Run command and if exit status isn't 0 and operator is 'and' then skip
+    - Else exit status is 0 and operator is 'or' then skip
+    - After handle command substituition then run exit status of command
+    '''
+    steps_exec = parse_command_operator(Token(string).split_token())
+    output = []
+    # printf(str(steps_exec))
+    for command, next_op in steps_exec:
+        if is_skip_command(operator) and is_boolean_command(command[0]):
+            result = handle_exit_status(' '.join(command))
+            output.append(result)
+        operator = next_op
+    return ''.join(output)
+
+
+def is_boolean_command(command):
+    if command == 'false':
+        os.environ['?'] = '1'
+    elif command == 'true':
+        os.environ['?'] = '0'
+    else:
+        return True
+    return False
+
+
+def is_skip_command(operator):
+    if not operator:
+        return True
+    if operator == '&&':
+        return os.environ['?'] == '0'
+    return os.environ['?'] != '0'
+
+
+def parse_command_operator(args):
+    '''
+    Tasks:
+    - Split command and logical operator into list of tuple
+    - Inside tuple is command + args and next logical operators after command
+    - Return list of step need to do logical operators
+    '''
+    steps = []
+    commands = args + [" "]
+    start = 0
+    for i, com in enumerate(commands):
+        if com == '||' or com == "&&" or com == ' ':
+            steps.append((commands[start: i], commands[i]))
+            start = i + 1
+    return steps
 
 
 def builtins_cd(directory=''):  # implement cd
@@ -169,11 +224,15 @@ def handle_exit_status(string):
     return output
 
 
+def show_error(error):
+    print(error)
+
+
 def main():
     while True:
         try:
             input_user = input('intek-sh$ ')
-            print(handle_exit_status(input_user), end='')
+            print(handle_logic_op(input_user), end='')
         except IndexError:
             pass
         except EOFError:
