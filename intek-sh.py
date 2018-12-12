@@ -16,13 +16,38 @@ def handle_logic_op(string, operator=None):
     '''
     steps_exec = parse_command_operator(Token(string).split_token())
     output = []
-    # printf(str(steps_exec))
     for command, next_op in steps_exec:
         if is_skip_command(operator) and is_boolean_command(command[0]):
             result = run_command(command.pop(0), command)
             output.append(result)
         operator = next_op
     return ''.join(output)
+
+
+def handle_com_substitution(arguments):
+    '''
+    Tasks:
+    - Checking is command substitution return string between backquote else return origin argument passed
+    - If string isn't empty then run handle logical operator to get result of that command
+    - If string is empty not need do anthing
+    '''
+    new_command = []
+    for arg in arguments:
+        result = check_command_sub(arg)
+        if result and result != arg:
+            valids = [arg for arg in handle_logic_op(result) if arg]
+            new_command += [e for arg in valids for e in arg.split('\n')]
+        elif result:
+            new_command.append(arg)
+    return new_command
+
+
+def check_command_sub(arg):
+    if arg.startswith('`') and arg.endswith('`'):
+        return arg[1:-1:].strip()
+    if arg.startswith('\\`') and arg.endswith('\\`'):
+        return arg[2:-2:].strip()
+    return arg
 
 
 def is_boolean_command(command):
