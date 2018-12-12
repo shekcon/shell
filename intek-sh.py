@@ -2,6 +2,7 @@
 from subprocess import Popen, PIPE
 from sys import exit as exit_program
 from globbing import glob_string
+from path_expansions import path_expansions, check_name
 from parse_command_shell import Token
 from logical_operators import *
 
@@ -85,16 +86,6 @@ def builtins_printenv(variables=[]):  # implement printenv
         for key, value in os.environ.items():
             output_lines.append(key + '=' + value)
     return exit_value, '\n'.join(output_lines)
-
-
-def check_name(name):
-    # check if name is a valid identifier or not
-    if not name or name[0].isdigit():
-        return False
-    for char in name:
-        if not (char.isalnum() or char is '_'):
-            return False
-    return True
 
 
 def builtins_export(variables=[]):  # implement export
@@ -205,10 +196,16 @@ def run_command(command, args=[]):
 
 
 def handle_exit_status(string):
+    if '$' in string or '~' in string:
+        exit_value, string = path_expansions(string)
+        if exit_value:
+            os.environ['?'] = str(exit_value)
+            show_error(string)
+            return ''
     if '*' in string or '?' in string:
         string = glob_string(string)
-    command = string.split()[0]
-    args = string[len(command):].split()
+    args = Token(string, keep_quote=False).split_token()
+    command = args.pop(0)
     exit_value, output = run_command(command, args)
     os.environ['?'] = str(exit_value)
     return output
