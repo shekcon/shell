@@ -1,5 +1,5 @@
 from vitural_terminal import *
-from completion import handle_completion, get_suggest
+#from completion import handle_completion, get_suggest
 
 
 def process_KEY_UP(input, curs_pos):
@@ -82,9 +82,10 @@ def process_KEY_BACKSPACE(input, input_pos):
         Shell.move(pos[0], pos[1]-1)
     elif pos[1] == 10:
         Shell.move(pos[0], pos[1])
-
+    return input
 
 def process_KEY_TAB(input, input_pos):
+    """
     if Shell.last_key in ['TAB', 'TAB2']:  # second TAB
         data = ''
         if input.endswith(' '):
@@ -98,6 +99,7 @@ def process_KEY_TAB(input, input_pos):
         if input != handle_completion(input, 'command'):
             input = handle_completion(input, 'command')
         Shell.last_key = 'TAB'
+    """
     window.addstr(input_pos[0], 10, input)
     window.refresh()
 
@@ -112,6 +114,8 @@ def process_KEY_DELETE(input, input_pos):
         input), input_pos[0], revese=False)
     window.addstr(input_pos[0], 0, Shell.PROMPT + input)
     Shell.move(pos[0], pos[1])
+    return input
+
 
 
 def process_KEY_RESIZE(input, input_pos):
@@ -134,7 +138,9 @@ def process_insert_mode(input, input_pos, char):
         (input_pos[0]*Shell.WIDTH + input_pos[1])
     input = input[:insert_loc] + char + input[insert_loc:]
     window.addstr(input_pos[0], 10, input)
-    Shell.move(pos[0], pos[1]+1)
+    #Shell.move(pos[0], pos[1]+1)
+    curses.setsyx(pos[0], pos[1]+1)
+    curses.doupdate()
     return input
 
 
@@ -174,9 +180,9 @@ def process_input():
             process_KEY_RIGHT(input, input_pos)
             char = ''
 
-        elif char == chr(127):  # curses.BACKSPACE
+        elif char == chr(curses.KEY_BACKSPACE):  # curses.BACKSPACE
             Shell.last_key = ''
-            process_KEY_BACKSPACE(input, input_pos)
+            input = process_KEY_BACKSPACE(input, input_pos)
             char = ''
 
         elif ord(char) == 9:  # curses.TAB
@@ -184,7 +190,7 @@ def process_input():
             char = ''
 
         elif char == chr(curses.KEY_DC):
-            process_KEY_DELETE(input, input_pos)
+            input = process_KEY_DELETE(input, input_pos)
             char = ''
 
         ##############################################################################################
@@ -192,20 +198,18 @@ def process_input():
         if char != '':
             input = process_insert_mode(input, input_pos, char)
 
-        # Write on window
 
-        #Shell.write_log(overwrite_last_data=last_data, Shell.read_nlines(startl=input_pos[0], n=Shell.count_lines(input)), end='')
+        Shell.write_log(overwrite_last_data=last_data, new=Shell.read_nlines(startl=input_pos[0], n = Shell.count_lines(input)), end='', mode='w')
         char = chr(window.getch())
 
     if Shell.last_key not in['TAB2']:
         step = input_pos[0]*Shell.WIDTH + input_pos[1] + len(input)
         window.move(step // Shell.WIDTH, step % Shell.WIDTH)
-        Shell.write_log(new='\n',mode='a')
+        #Shell.write_log(new='\n',mode='a')
 
     if input not in ['\n', '']:
         Shell.HISTORY_STACK.append(input)
         Shell.STACK_CURRENT_INDEX = 0
-
 
     if Shell.last_key in ['TAB2']:
         char = Shell.getch(Shell.PROMPT)

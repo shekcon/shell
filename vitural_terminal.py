@@ -1,6 +1,6 @@
 import curses
 import os
-from completion import handle_completion, get_suggest
+#from completion import handle_completion, get_suggest
 
 global window
 window = curses.initscr()
@@ -55,14 +55,14 @@ class Shell:
     @classmethod
     def write_log(Shell, overwrite_last_data=False, new='', end='', mode='w'):
         pos = Shell.cursor_pos()
-        last_data = Shell.read_log()
+        last_data = ""
         if overwrite_last_data:
             last_data = overwrite_last_data
         if mode == 'w':
             open(Shell.windowlog, mode).write(last_data+new+end)
         else:
             open(Shell.windowlog, mode).write(new+end)
-        window.move(pos[0], pos[1])
+        Shell.move(pos[0], pos[1])
 
     @classmethod
     def cursor_pos(Shell):
@@ -77,6 +77,7 @@ class Shell:
             Shell.add_str(pos[0], 0, Shell.PROMPT)
         if append_log:
             Shell.write_log(Shell.PROMPT, end='', mode='a')
+
         return chr(window.getch())
 
     @classmethod
@@ -97,8 +98,11 @@ class Shell:
             Shell.write_log(new='@'+string+end, mode='a')
 
     @classmethod
-    def move(Shell, y, x):
-        window.move(y, x)
+    def move(Shell, y, x, refresh=True):
+        window.refresh()
+        curses.setsyx(y, x)
+        curses.doupdate()
+
 
     @classmethod
     def count_lines(Shell, string):
@@ -133,9 +137,14 @@ class Shell:
         content = ''
         if not reverse:
             for col in range(startl, startl+n):
-                content += window.instr(col, 0)
+                content += window.instr(col, 0).decode().strip()
         else:
             for col in range(startl-n+1, startl+1):
-                content += window.instr(col, 0)
+                content += window.instr(col, 0).decode().strip()
         Shell.move(pos[0], pos[1])
         return content
+
+    @classmethod
+    def move_relative(Shell, start_pos, offset=0):
+        step = start_pos[0]*Shell.WIDTH + start_pos[1] + offset
+        Shell.move(step // Shell.WIDTH, step % Shell.WIDTH)
