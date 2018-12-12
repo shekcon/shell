@@ -102,7 +102,7 @@ def builtins_exit(exit_code):  # implement exit
     exit_program(exit_value)
 
 
-def run_executions(command, args):
+def run_execution(command, args):
     output = []
     try:
         process = Popen([command]+args, stdout=PIPE, stderr=PIPE)
@@ -110,22 +110,21 @@ def run_executions(command, args):
         process.wait()
         exit_value = process.returncode
         if err:
-            output.append(err.decode())
+            message = err.decode()
         if out:
             output.append(out.decode())
     except PermissionError:
         exit_value = 126
-        output.append('intek-sh: %s: Permission denied\n' % command)
+        message = 'intek-sh: %s: Permission denied' % command
     except FileNotFoundError:
         exit_value = 127
-        output.append('intek-sh: %s: command not found\n' % command)
-    except OSError:
-        exit_value = 127
-        output.append("intek-sh: %s: cannot execute binary file\n" % command)
-    return exit_value, '\n'.join(output)
+        message = 'intek-sh: %s: command not found' % command
+    if exit_value:
+        show_error(message)
+    return exit_value, ''.join(output)
 
 
-def run_command(command, args=[]):
+def run_builtins(command, args):
     if command == 'cd':
         return builtins_cd(' '.join(args))
     elif command == 'printenv':
@@ -134,17 +133,30 @@ def run_command(command, args=[]):
         return builtins_export(args)
     elif command == 'unset':
         return builtins_unset(args)
-    elif command == 'exit':
+    else:
         return builtins_exit(' '.join(args))
+
+
+def run_utility(command, args):
+    paths = os.environ['PATH'].split(':')
+    for path in paths:
+        realpath = path + '/' + command
+        if os.path.exists(realpath):
+            return run_execution(realpath, args)
+    show_error('intek-sh: %s: command not found' % command)
+    return 127, ''
+
+
+def run_command(command, args=[]):
+    built_ins = ('cd', 'printenv', 'export', 'unset', 'exit')
+    if command in built_ins:
+        return run_builtins(command, args)
     elif '/' in command:
-        return run_executions(command, args)
+        return run_execution(command, args)
     elif 'PATH' in os.environ:
-        paths = os.environ['PATH'].split(':')
-        for path in paths:
-            realpath = path + '/' + command
-            if os.path.exists(realpath):
-                return run_executions(realpath, args)
-    return 127, 'intek-sh: %s: command not found\n' % command
+        return run_utility(command, args)
+    show_error('intek-sh: %s: command not found' % command)
+    return 127, ''
 
 
 def handle_exit_status(string):
