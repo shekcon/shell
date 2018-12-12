@@ -18,11 +18,21 @@ def handle_logic_op(string, operator=None):
     output = []
     # printf(str(steps_exec))
     for command, next_op in steps_exec:
-        if is_skip_command(operator):
+        if is_skip_command(operator) and is_boolean_command(command[0]):
             result = run_command(command.pop(0), command)
             output.append(result)
         operator = next_op
     return output
+
+
+def is_boolean_command(command):
+    if command == 'false':
+        os.environ['?'] = '1'
+    elif command == 'true':
+        os.environ['?'] = '0'
+    else:
+        return True
+    return False
 
 
 def is_skip_command(operator):
