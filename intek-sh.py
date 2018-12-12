@@ -22,7 +22,7 @@ def handle_logic_op(string, operator=None):
             result = run_command(command.pop(0), command)
             output.append(result)
         operator = next_op
-    return output
+    return ''.join(output)
 
 
 def is_boolean_command(command):
@@ -205,7 +205,7 @@ def main():
             args = input_user[len(command):].split()
             if command == 'exit':
                 break
-            print(handle_logic_op(command, args), end='')
+            print(handle_logic_op(input_user), end='')
         except IndexError:
             pass
         except EOFError:
