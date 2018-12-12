@@ -4,6 +4,9 @@ from sys import exit as exit_program
 from globbing import glob_string
 from parse_command_shell import Token
 from logical_operators import *
+from signal import signal
+from signal import SIG_IGN, SIGINT, SIGQUIT, SIGTSTP, signal
+
 
 def handle_logic_op(string, operator=None):
     '''
@@ -13,15 +16,18 @@ def handle_logic_op(string, operator=None):
     - Else exit status is 0 and operator is 'or' then skip
     - After handle command substituition then run exit status of command
     '''
-    steps_exec = parse_command_operator(Token(string).split_token())
+    global sig_now
+    steps_exec = parse_command_operator(Token(string, keep_quote=False).split_token())
     output = []
     for command, next_op in steps_exec:
         if is_skip_command(operator) and is_boolean_command(command[0]):
             command = handle_com_substitution(command)
-            result = handle_exit_status(' '.join(command))
+            result = handle_exit_status(command)
             output.append(result)
         operator = next_op
-    return ''.join(output)
+        if sig_now is not None:
+            break
+    return output
 
 
 def handle_com_substitution(arguments):
@@ -31,14 +37,19 @@ def handle_com_substitution(arguments):
     - If string isn't empty then run handle logical operator to get result of that command
     - If string is empty not need do anthing
     '''
+    global sig_now, com_sub
     new_command = []
     for arg in arguments:
         result = check_command_sub(arg)
         if result and result != arg:
+            com_sub = True
             valids = [arg for arg in handle_logic_op(result) if arg]
             new_command += [e for arg in valids for e in arg.split('\n')]
+            com_sub = False
         elif result:
             new_command.append(arg)
+        if sig_now is not None:
+            break
     return new_command
 
 
@@ -111,7 +122,7 @@ def builtins_export(variables=[]):  # implement export
                 os.environ[name] = value
             else:
                 exit_value = 1
-                errors.append('intek-sh: export: `%s\': '
+                print('intek-sh: export: `%s\': '
                               'not a valid identifier\n' % variable)
         output = '\n'.join(errors)
     else:
@@ -148,22 +159,30 @@ def builtins_exit(exit_code):  # implement exit
 
 
 def run_execution(command, args):
+    global process, sig_now, com_sub
     output = []
     try:
         process = Popen([command]+args, stdout=PIPE, stderr=PIPE)
-        out, err = process.communicate()  # byte
-        process.wait()
+        line = process.stdout.readline().decode()
+        while line and sig_now is None:
+            if not com_sub:
+                print(line.strip())
+            output.append(line)
+            line = process.stdout.readline().decode()
+        if sig_now is None:
+            process.wait()
         exit_value = process.returncode
-        if err:
-            message = err.decode()
-        if out:
-            output.append(out.decode())
+        if exit_value:
+            message = process.stderr.read().decode()
     except PermissionError:
         exit_value = 126
         message = 'intek-sh: %s: Permission denied' % command
     except FileNotFoundError:
         exit_value = 127
         message = 'intek-sh: %s: command not found' % command
+    except Exception as e:
+        message = str(e)
+        exit_value = 1
     if exit_value:
         show_error(message)
     return exit_value, ''.join(output)
@@ -195,7 +214,10 @@ def run_utility(command, args):
 def run_command(command, args=[]):
     built_ins = ('cd', 'printenv', 'export', 'unset', 'exit')
     if command in built_ins:
-        return run_builtins(command, args)
+        exit_code, output = run_builtins(command, args)
+        if not com_sub:
+            print(output)
+        return exit_code, output
     elif '/' in command:
         return run_execution(command, args)
     elif 'PATH' in os.environ:
@@ -204,25 +226,68 @@ def run_command(command, args=[]):
     return 127, ''
 
 
-def handle_exit_status(string):
-    if '*' in string or '?' in string:
-        string = glob_string(string)
-    command = string.split()[0]
-    args = string[len(command):].split()
+def handle_exit_status(args):
+    global sig_now
+    if sig_now is not None:
+        return
+    for i, arg in enumerate(args):
+        if '*' in arg or '?' in arg:
+            args[i] = glob_string(arg)
+    command = args.pop(0)
     exit_value, output = run_command(command, args)
     os.environ['?'] = str(exit_value)
     return output
 
+def handle_child_process(sig):
+    global process, sig_now
+    if process:
+        try:
+            sig_now = sig
+            os.kill(process.pid, sig)
+        except ProcessLookupError:
+            # printf("error finding process")
+            sig_now = None
+            return None
+        if sig == SIGQUIT:
+            return 131
+        return 148
+    return None
+
+
+def handle_signal(sig, frame):
+    global process
+    if sig == SIGINT:
+        handle_child_process(sig)
+        exit_code = 130
+    elif sig == SIGQUIT:
+        exit_code = handle_child_process(sig)
+    else:
+        exit_code = handle_child_process(sig)
+    if exit_code is not None:
+        os.environ['?'] = str(exit_code)
 
 def show_error(error):
     print(error)
 
 
+def setup_terminal():
+    global process, sig_now, com_sub
+    com_sub = False
+    process = None
+    sig_now = None
+    signal(SIGINT, handle_signal)
+    signal(SIGTSTP, handle_signal)
+    signal(SIGQUIT, handle_signal)
+
 def main():
+    global process, sig_now
+    setup_terminal()
     while True:
         try:
             input_user = input('intek-sh$ ')
-            print(handle_logic_op(input_user), end='')
+            handle_logic_op(input_user)
+            process = None
+            sig_now = None
         except IndexError:
             pass
         except EOFError:
