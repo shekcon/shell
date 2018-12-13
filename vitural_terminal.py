@@ -4,6 +4,9 @@ import os
 
 global window
 window = curses.initscr()
+def write_file(content):
+    with open('debug','w') as f:
+        f.write(str(content))
 
 class Shell:
 
@@ -43,6 +46,8 @@ class Shell:
         Shell.newline_mark = '@'
         Shell.last_key = ''
         Shell.input = ''
+        Shell.go_to_end = False
+        Shell.go_to_home = False
 
     def _update_winsize(self):
         Shell.HEIGHT, Shell.WIDTH = window.getmaxyx()
@@ -100,7 +105,28 @@ class Shell:
     @classmethod
     def move(Shell, y, x, refresh=True):
         window.refresh()
-        curses.setsyx(y, x)
+        """
+        if x < Shell.WIDTH and x >= 0:
+            window.move(y, x)
+        else:
+            if x > 0:
+                if y+1 < Shell.HEIGHT:
+                    window.move(y+1, 0)
+                else:
+                    window.move(y, 0)
+            else:
+                window.move(y-1, Shell.WIDTH-1)
+        """
+        if x < Shell.WIDTH and x >= 0:
+            curses.setsyx(y, x)
+        else:
+            if x > 0:
+                if y+1 < Shell.HEIGHT:
+                    curses.setsyx(y+1, 0)
+                else:
+                    curses.setsyx(y, 0)
+            else:
+                curses.setsyx(y-1, Shell.WIDTH-1)
         curses.doupdate()
 
 
@@ -127,9 +153,9 @@ class Shell:
             if i != n-1:
                 pos = curses.getsyx()
                 if revese:
-                    window.move(pos[0]-1, Shell.WIDTH-1)
+                    Shell.move(pos[0]-1, Shell.WIDTH-1)
                 else:
-                    window.move(pos[0]+1, Shell.WIDTH-1)
+                    Shell.move(pos[0]+1, Shell.WIDTH-1)
 
     @classmethod
     def read_nlines(Shell, startl, n=1, reverse=False):
@@ -148,3 +174,9 @@ class Shell:
     def move_relative(Shell, start_pos, offset=0):
         step = start_pos[0]*Shell.WIDTH + start_pos[1] + offset
         Shell.move(step // Shell.WIDTH, step % Shell.WIDTH)
+    
+    @classmethod
+    def step(Shell, y, x, yStart=0, xStart=0):
+        """ return int step from (yStart, xStart) to (y, x) """
+        return y*Shell.WIDTH + x - yStart*Shell.WIDTH - xStart
+    

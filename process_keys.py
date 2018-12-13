@@ -65,14 +65,13 @@ def process_KEY_LEFT(input, input_pos):
 def process_KEY_RIGHT(input, input_pos):
     pos = Shell.cursor_pos()
     step = pos[0]*Shell.WIDTH + pos[1] + 1
-    if step <= input_pos[0]*Shell.WIDTH + input_pos[1] + len(input):
+    if Shell.step(pos[0], pos[1]) <= Shell.step(input_pos[0], input_pos[1]) + len(input):
         Shell.move(step // Shell.WIDTH, step % Shell.WIDTH)
 
 
 def process_KEY_BACKSPACE(input, input_pos):
     pos = Shell.cursor_pos()
-    del_loc = pos[0]*Shell.WIDTH + pos[1] - \
-        (input_pos[0]*Shell.WIDTH + input_pos[1])
+    del_loc = Shell.step(pos[0], pos[1]) - Shell.step(input_pos[0], input_pos[1])
     if del_loc > 0:
         input = input[:del_loc-1] + input[del_loc:]
     Shell.del_nlines(Shell.count_lines(
@@ -106,8 +105,7 @@ def process_KEY_TAB(input, input_pos):
 
 def process_KEY_DELETE(input, input_pos):
     pos = Shell.cursor_pos()
-    del_loc = pos[0]*Shell.WIDTH + pos[1] - \
-        (input_pos[0]*Shell.WIDTH + input_pos[1]) + 1
+    del_loc = Shell.step(pos[0], pos[1]) - Shell.step(input_pos[0], input_pos[1])
     if del_loc > 0:
         input = input[:del_loc-1] + input[del_loc:]
     Shell.del_nlines(Shell.count_lines(
@@ -125,23 +123,33 @@ def process_KEY_RESIZE(input, input_pos):
     window.addstr(0, 0, data)
     window.refresh()
     Shell.HEIGHT, Shell.WIDTH = window.getmaxyx()
-    pos = Shell.read_log()
+    pos = Shell.cursor_pos()
     step = pos[0]*Shell.WIDTH + pos[1]
     loc_step = step - len(input)
     input_pos = loc_step//Shell.WIDTH, loc_step % Shell.WIDTH
     #window.move(input_pos[0] + lens//self.width, (step + lens) % self.width)
 
 
-def process_insert_mode(input, input_pos, char):
+def process_insert_mode(input, input_pos, char, last_data):
     pos = Shell.cursor_pos()
-    insert_loc = pos[0]*Shell.WIDTH + pos[1] - \
-        (input_pos[0]*Shell.WIDTH + input_pos[1])
+
+    
+    insert_loc = Shell.step(pos[0], pos[1]) - Shell.step(input_pos[0], input_pos[1])
+
+    write_file(insert_loc)
+
+    if Shell.step(input_pos[0], input_pos[1]) + len(input) == Shell.WIDTH * Shell.HEIGHT:
+        insert_loc += Shell.WIDTH
+
     input = input[:insert_loc] + char + input[insert_loc:]
-    window.addstr(input_pos[0], 10, input)
-    #Shell.move(pos[0], pos[1]+1)
-    curses.setsyx(pos[0], pos[1]+1)
-    curses.doupdate()
-    return input
+    if Shell.step(input_pos[0], input_pos[1]) + len(input) > Shell.WIDTH * Shell.HEIGHT:
+        input_pos = input_pos[0] - 1, input_pos[1]
+
+    
+    window.addstr(input_pos[0], input_pos[1], input)
+    #Shell.write_log(overwrite_last_data=last_data, new=Shell.read_nlines(startl=input_pos[0], n = Shell.count_lines(input)), end='', mode='w')
+    Shell.move(pos[0], pos[1]+1)
+    return input, input_pos
 
 
 def process_input():
@@ -180,7 +188,7 @@ def process_input():
             process_KEY_RIGHT(input, input_pos)
             char = ''
 
-        elif char == chr(curses.KEY_BACKSPACE):  # curses.BACKSPACE
+        elif char == chr(curses.KEY_BACKSPACE) or ord(char) == 127:  # curses.BACKSPACE
             Shell.last_key = ''
             input = process_KEY_BACKSPACE(input, input_pos)
             char = ''
@@ -196,16 +204,14 @@ def process_input():
         ##############################################################################################
         # Insert mode
         if char != '':
-            input = process_insert_mode(input, input_pos, char)
-
-
-        Shell.write_log(overwrite_last_data=last_data, new=Shell.read_nlines(startl=input_pos[0], n = Shell.count_lines(input)), end='', mode='w')
+            input, input_pos = process_insert_mode(input, input_pos, char, last_data)
+            
         char = chr(window.getch())
 
     if Shell.last_key not in['TAB2']:
         step = input_pos[0]*Shell.WIDTH + input_pos[1] + len(input)
         window.move(step // Shell.WIDTH, step % Shell.WIDTH)
-        #Shell.write_log(new='\n',mode='a')
+        Shell.write_log(new='\n')
 
     if input not in ['\n', '']:
         Shell.HISTORY_STACK.append(input)
