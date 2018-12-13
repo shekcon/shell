@@ -1,5 +1,5 @@
 from vitural_terminal import *
-from completion import handle_completion, get_suggest
+from completion import handle_completion, get_suggest, complete_tab, complete_double_tab
 
 
 def process_KEY_UP(input, curs_pos):
@@ -84,23 +84,26 @@ def process_KEY_BACKSPACE(input, input_pos):
     return input
 
 def process_KEY_TAB(input, input_pos):
+    string = input
     if Shell.last_key in ['TAB', 'TAB2']:  # second TAB
-        data = ''
-        if input.endswith(' '):
-            data = "\n".join(get_suggest("", 'file'))
-        else:
-            data = "\n".join(get_suggest(input.strip(), 'command'))
+        data = complete_double_tab(input)
         if len(data):
             Shell.printf('\n'+data)
             Shell.last_key = 'TAB2'
             Shell.can_break = True
             return input
     else:
-        if input != handle_completion(input, 'command'):
-            input = handle_completion(input, 'command')
+        pos = Shell.cursor_pos()
+        insert_pos = Shell.step(pos[0],pos[1]) - Shell.step(input_pos[0], input_pos[1])
+        string = input[:insert_pos]
+        if string != complete_tab(input[:insert_pos]):
+            string = complete_tab(input[:insert_pos])
+            input = string + input[insert_pos:]
+            
         Shell.last_key = 'TAB'
-    window.addstr(input_pos[0], 10, input)
-    window.refresh()
+    Shell.add_str(input_pos[0], 10, input)
+    step = Shell.step(input_pos[0], input_pos[1]) + len(string)
+    Shell.move(step//Shell.WIDTH, step%Shell.WIDTH)
     return input
 
 
