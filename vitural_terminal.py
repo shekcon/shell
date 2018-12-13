@@ -4,9 +4,12 @@ import os
 
 global window
 window = curses.initscr()
+
+
 def write_file(content):
-    with open('debug','w') as f:
+    with open('debug', 'w') as f:
         f.write(str(content))
+
 
 class Shell:
 
@@ -42,7 +45,7 @@ class Shell:
         Shell.windowlog = 'windowlog'
         open(Shell.windowlog, 'w').close()
         Shell.historylog = 'history'
-        open(Shell.historylog,'w').close()
+        open(Shell.historylog, 'w').close()
         Shell.newline_mark = '@'
         Shell.last_key = ''
         Shell.input = ''
@@ -121,18 +124,6 @@ class Shell:
                     window.move(y, 0)
             else:
                 window.move(y-1, Shell.WIDTH-1)
-        # if x < Shell.WIDTH and x >= 0:
-        #     curses.setsyx(y, x)
-        # else:
-        #     if x > 0:
-        #         if y+1 < Shell.HEIGHT:
-        #             curses.setsyx(y+1, 0)
-        #         else:
-        #             curses.setsyx(y, 0)
-        #     else:
-        #         curses.setsyx(y-1, Shell.WIDTH-1)
-        # curses.doupdate()
-
 
     @classmethod
     def count_lines(Shell, string):
@@ -178,9 +169,8 @@ class Shell:
     def move_relative(Shell, start_pos, offset=0):
         step = start_pos[0]*Shell.WIDTH + start_pos[1] + offset
         Shell.move(step // Shell.WIDTH, step % Shell.WIDTH)
-    
+
     @classmethod
     def step(Shell, y, x, yStart=0, xStart=0):
         """ return int step from (yStart, xStart) to (y, x) """
         return y*Shell.WIDTH + x - yStart*Shell.WIDTH - xStart
-    
