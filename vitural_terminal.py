@@ -48,6 +48,8 @@ class Shell:
         Shell.input = ''
         Shell.go_to_end = False
         Shell.go_to_home = False
+        Shell.can_break = False
+        Shell.restore = False
 
     def _update_winsize(self):
         Shell.HEIGHT, Shell.WIDTH = window.getmaxyx()
@@ -75,11 +77,15 @@ class Shell:
         return pos[0], pos[1]
 
     @classmethod
-    def getch(Shell, append_log=False, prompt=True):
+    def getch(Shell, append_log=False, prompt=True, restore=False):
         """ get a character from input """
         pos = Shell.cursor_pos()
         if prompt:
-            Shell.add_str(pos[0], 0, Shell.PROMPT)
+            if not restore:
+                Shell.add_str(pos[0], 0, Shell.PROMPT)
+            else:
+                Shell.add_str(pos[0], 0, Shell.PROMPT + restore)
+                window.refresh()
         if append_log:
             Shell.write_log(Shell.PROMPT, end='', mode='a')
 
@@ -105,7 +111,6 @@ class Shell:
     @classmethod
     def move(Shell, y, x, refresh=True):
         window.refresh()
-        """
         if x < Shell.WIDTH and x >= 0:
             window.move(y, x)
         else:
@@ -116,18 +121,17 @@ class Shell:
                     window.move(y, 0)
             else:
                 window.move(y-1, Shell.WIDTH-1)
-        """
-        if x < Shell.WIDTH and x >= 0:
-            curses.setsyx(y, x)
-        else:
-            if x > 0:
-                if y+1 < Shell.HEIGHT:
-                    curses.setsyx(y+1, 0)
-                else:
-                    curses.setsyx(y, 0)
-            else:
-                curses.setsyx(y-1, Shell.WIDTH-1)
-        curses.doupdate()
+        # if x < Shell.WIDTH and x >= 0:
+        #     curses.setsyx(y, x)
+        # else:
+        #     if x > 0:
+        #         if y+1 < Shell.HEIGHT:
+        #             curses.setsyx(y+1, 0)
+        #         else:
+        #             curses.setsyx(y, 0)
+        #     else:
+        #         curses.setsyx(y-1, Shell.WIDTH-1)
+        # curses.doupdate()
 
 
     @classmethod

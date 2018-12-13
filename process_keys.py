@@ -1,5 +1,5 @@
 from vitural_terminal import *
-#from completion import handle_completion, get_suggest
+
 
 
 def process_KEY_UP(input, curs_pos):
@@ -84,23 +84,9 @@ def process_KEY_BACKSPACE(input, input_pos):
     return input
 
 def process_KEY_TAB(input, input_pos):
-    """
-    if Shell.last_key in ['TAB', 'TAB2']:  # second TAB
-        data = ''
-        if input.endswith(' '):
-            data = "\n".join(get_suggest("", 'file'))
-        else:
-            data = "\n".join(get_suggest(input.strip(), 'command'))
-        if len(data):
-            Shell.printf('\n'+data)
-            Shell.last_key = 'TAB2'
-    else:
-        if input != handle_completion(input, 'command'):
-            input = handle_completion(input, 'command')
-        Shell.last_key = 'TAB'
-    """
     window.addstr(input_pos[0], 10, input)
     window.refresh()
+    return input
 
 
 def process_KEY_DELETE(input, input_pos):
@@ -132,20 +118,13 @@ def process_KEY_RESIZE(input, input_pos):
 
 def process_insert_mode(input, input_pos, char, last_data):
     pos = Shell.cursor_pos()
-
-    
     insert_loc = Shell.step(pos[0], pos[1]) - Shell.step(input_pos[0], input_pos[1])
-
-    write_file(insert_loc)
-
     if Shell.step(input_pos[0], input_pos[1]) + len(input) == Shell.WIDTH * Shell.HEIGHT:
         insert_loc += Shell.WIDTH
 
     input = input[:insert_loc] + char + input[insert_loc:]
     if Shell.step(input_pos[0], input_pos[1]) + len(input) > Shell.WIDTH * Shell.HEIGHT:
         input_pos = input_pos[0] - 1, input_pos[1]
-
-    
     window.addstr(input_pos[0], input_pos[1], input)
     #Shell.write_log(overwrite_last_data=last_data, new=Shell.read_nlines(startl=input_pos[0], n = Shell.count_lines(input)), end='', mode='w')
     Shell.move(pos[0], pos[1]+1)
@@ -153,18 +132,26 @@ def process_insert_mode(input, input_pos, char, last_data):
 
 
 def process_input():
-    char = Shell.getch(Shell.PROMPT)
-    input = ""  # inittial input
+    input = ""
+    if Shell.restore:
+        input = Shell.HISTORY_STACK[-1]
+        char = Shell.getch(Shell.PROMPT, restore=input)
+        Shell.restore = False
+        input_pos = Shell.cursor_pos()[0], len(Shell.PROMPT)
+    else:
+        char = Shell.getch(Shell.PROMPT)
+        input_pos = Shell.cursor_pos()
+    
 
-    input_pos = Shell.cursor_pos()
     last_data = Shell.read_log()
+    Shell.can_break = False
     while char not in ['\n']:
         ######################### KEY process ####################################
         """
             This block's purposes are handling special KEYS
             Add feature on this block
         """
-        if ord(char) == curses.KEY_RESIZE:
+        if char == chr(curses.KEY_RESIZE):
             process_KEY_RESIZE(input, input_pos)
             char = ''
 
@@ -194,7 +181,9 @@ def process_input():
             char = ''
 
         elif ord(char) == 9:  # curses.TAB
-            process_KEY_TAB(input, input_pos)
+            input = process_KEY_TAB(input, input_pos)
+            if Shell.can_break:
+                break
             char = ''
 
         elif char == chr(curses.KEY_DC):
@@ -204,21 +193,23 @@ def process_input():
         ##############################################################################################
         # Insert mode
         if char != '':
+            Shell.last_key = char
             input, input_pos = process_insert_mode(input, input_pos, char, last_data)
-            
+
         char = chr(window.getch())
 
     if Shell.last_key not in['TAB2']:
         step = input_pos[0]*Shell.WIDTH + input_pos[1] + len(input)
         window.move(step // Shell.WIDTH, step % Shell.WIDTH)
-        Shell.write_log(new='\n')
+
 
     if input not in ['\n', '']:
         Shell.HISTORY_STACK.append(input)
         Shell.STACK_CURRENT_INDEX = 0
 
     if Shell.last_key in ['TAB2']:
-        char = Shell.getch(Shell.PROMPT)
+        Shell.printf(Shell.PROMPT, end='')
+        Shell.restore = True
         input = ""
     else:
         window.addstr("\n")
