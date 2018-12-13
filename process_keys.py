@@ -1,5 +1,5 @@
 from vitural_terminal import *
-
+from completion import handle_completion, get_suggest
 
 
 def process_KEY_UP(input, curs_pos):
@@ -84,6 +84,21 @@ def process_KEY_BACKSPACE(input, input_pos):
     return input
 
 def process_KEY_TAB(input, input_pos):
+    if Shell.last_key in ['TAB', 'TAB2']:  # second TAB
+        data = ''
+        if input.endswith(' '):
+            data = "\n".join(get_suggest("", 'file'))
+        else:
+            data = "\n".join(get_suggest(input.strip(), 'command'))
+        if len(data):
+            Shell.printf('\n'+data)
+            Shell.last_key = 'TAB2'
+            Shell.can_break = True
+            return input
+    else:
+        if input != handle_completion(input, 'command'):
+            input = handle_completion(input, 'command')
+        Shell.last_key = 'TAB'
     window.addstr(input_pos[0], 10, input)
     window.refresh()
     return input
