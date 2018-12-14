@@ -77,6 +77,7 @@ def handle_completion(text, mode):
         return redu_left + find_common_suggest(list_suggest, text) + redu_right
     return redu_left + text + redu_right
 
+
 def truncate(string):
     """
         Take out the part of the string needs to be completed
@@ -87,12 +88,12 @@ def truncate(string):
     except IndexError:
         return ""
 
-
 def complete_tab(string):
     mode = 'command'
     if "/" in truncate(string):
         mode = 'files'
     return handle_completion(string, mode)
+
 
 def complete_double_tab(string):
     data = ''
