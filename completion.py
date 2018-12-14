@@ -18,7 +18,7 @@ def get_all_files(path):
     '''
     head, _ = os.path.split(path)
     if head:
-        return [os.path.join(head, p)  for p in os.listdir(head)]
+        return [os.path.join(head, p)  for p in os.listdir(head) if not p.startswith('.')]
     return os.listdir('.')
 
 

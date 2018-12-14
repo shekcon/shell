@@ -77,17 +77,17 @@ class Shell:
         return pos[0], pos[1]
 
     @classmethod
-    def getch(Shell, append_log=False, prompt=True, restore=False):
+    def getch(Shell, append_log=True, prompt=True, restore=False):
         """ get a character from input """
         pos = Shell.cursor_pos()
+        data = Shell.PROMPT
+        if restore:
+            data = Shell.PROMPT + restore
         if prompt:
-            if not restore:
-                Shell.add_str(pos[0], 0, Shell.PROMPT)
-            else:
-                Shell.add_str(pos[0], 0, Shell.PROMPT + restore)
-                window.refresh()
+            Shell.add_str(pos[0], 0, data)
+
         if append_log:
-            Shell.write_log(Shell.PROMPT, end='', mode='a')
+            Shell.write_log(new = data, end='', mode='a')
 
         return chr(window.getch())
 
@@ -98,15 +98,17 @@ class Shell:
         window.refresh()
 
     @classmethod
-    def printf(Shell, string="", end='\n'):
+    def printf(Shell, string="", end='\n', pretty=False, write_log=True):
         """ interpreted python print function to work with curses """
         pos = Shell.cursor_pos()
         if string.endswith('\n'):
             Shell.add_str(pos[0], pos[1], string)
-            Shell.write_log(new='@'+string, mode='a')
+            if write_log:
+                Shell.write_log(new='@'+string, mode='a')
         else:
             Shell.add_str(pos[0], pos[1], string+end)
-            Shell.write_log(new='@'+string+end, mode='a')
+            if write_log:
+                Shell.write_log(new='@'+string+end, mode='a')
 
     @classmethod
     def move(Shell, y, x, refresh=True):
@@ -121,17 +123,7 @@ class Shell:
                     window.move(y, 0)
             else:
                 window.move(y-1, Shell.WIDTH-1)
-        # if x < Shell.WIDTH and x >= 0:
-        #     curses.setsyx(y, x)
-        # else:
-        #     if x > 0:
-        #         if y+1 < Shell.HEIGHT:
-        #             curses.setsyx(y+1, 0)
-        #         else:
-        #             curses.setsyx(y, 0)
-        #     else:
-        #         curses.setsyx(y-1, Shell.WIDTH-1)
-        # curses.doupdate()
+
 
 
     @classmethod
@@ -184,3 +176,13 @@ class Shell:
         """ return int step from (yStart, xStart) to (y, x) """
         return y*Shell.WIDTH + x - yStart*Shell.WIDTH - xStart
     
+    @classmethod
+    def display_history(Shell, index=False):
+        if not index:
+            for i in range(len(Shell.HISTORY_STACK)):
+                Shell.printf("{:3d}".format(i)+'  '+str(Shell.HISTORY_STACK[i]))
+        else:
+            Shell.HISTORY_STACK.pop()
+            Shell.STACK_CURRENT_INDEX = 0
+            Shell.printf(Shell.HISTORY_STACK[index])
+            return Shell.HISTORY_STACK[index]

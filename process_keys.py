@@ -1,5 +1,6 @@
 from vitural_terminal import *
 from completion import handle_completion, get_suggest, complete_tab, complete_double_tab
+from pprint import pformat
 
 
 def process_KEY_UP(input, curs_pos):
@@ -88,7 +89,7 @@ def process_KEY_TAB(input, input_pos):
     if Shell.last_key in ['TAB', 'TAB2']:  # second TAB
         data = complete_double_tab(input)
         if len(data):
-            Shell.printf('\n'+data)
+            Shell.printf('\n'+pformat(data, Shell.WIDTH))
             Shell.last_key = 'TAB2'
             Shell.can_break = True
             return input
@@ -99,7 +100,7 @@ def process_KEY_TAB(input, input_pos):
         if string != complete_tab(input[:insert_pos]):
             string = complete_tab(input[:insert_pos])
             input = string + input[insert_pos:]
-            
+            Shell.write_log(new=input[insert_pos:], end='')
         Shell.last_key = 'TAB'
     Shell.add_str(input_pos[0], 10, input)
     step = Shell.step(input_pos[0], input_pos[1]) + len(string)
@@ -151,11 +152,13 @@ def process_insert_mode(input, input_pos, char, last_data):
 
 def process_input():
     input = ""
+
     if Shell.restore:
         input = Shell.HISTORY_STACK[-1]
         char = Shell.getch(Shell.PROMPT, restore=input)
         Shell.restore = False
         input_pos = Shell.cursor_pos()[0], len(Shell.PROMPT)
+
     else:
         char = Shell.getch(Shell.PROMPT)
         input_pos = Shell.cursor_pos()
@@ -213,20 +216,25 @@ def process_input():
         if char != '':
             Shell.last_key = char
             input, input_pos = process_insert_mode(input, input_pos, char, last_data)
-
+            Shell.write_log(last_data,input)
         char = chr(window.getch())
 
     if Shell.last_key not in['TAB2']:
         step = input_pos[0]*Shell.WIDTH + input_pos[1] + len(input)
         window.move(step // Shell.WIDTH, step % Shell.WIDTH)
-
+        Shell.write_log(new='\n',mode='a')
 
     if input not in ['\n', '']:
-        Shell.HISTORY_STACK.append(input)
-        Shell.STACK_CURRENT_INDEX = 0
+        try:
+            if Shell.HISTORY_STACK[-1] != input:
+                Shell.HISTORY_STACK.append(input)
+            Shell.STACK_CURRENT_INDEX = 0
+        except IndexError:
+                Shell.HISTORY_STACK.append(input)
+                Shell.STACK_CURRENT_INDEX = 0
 
     if Shell.last_key in ['TAB2']:
-        Shell.printf(Shell.PROMPT, end='')
+        Shell.printf(Shell.PROMPT, end='', write_log=False)
         Shell.restore = True
         input = ""
     else:
@@ -241,4 +249,6 @@ if __name__ == '__main__':
         input = process_input()
         if input == 'exit':
             break
+        elif input == 'history':
+            Shell.display_history()
     curses.endwin()
