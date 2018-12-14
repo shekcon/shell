@@ -290,7 +290,8 @@ def show_error(error):
 
 
 def setup_terminal():
-    global subshell
+    global subshell, terminate
+    terminate = False
     subshell = False
     os.environ['?'] = '0'
     reset_terminal()
