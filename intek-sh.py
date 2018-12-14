@@ -5,6 +5,8 @@ from globbing import glob_string
 from parse_command_shell import Token
 from logical_operators import *
 from process_keys import *
+from signal import signal
+from signal import SIG_IGN, SIGINT, SIGQUIT, SIGTERM, signal
 
 
 def handle_logic_op(string, operator=None):
@@ -15,14 +17,17 @@ def handle_logic_op(string, operator=None):
     - Else exit status is 0 and operator is 'or' then skip
     - After handle command substitution then run exit status of command
     '''
+    global terminate
     steps_exec = parse_command_operator(Token(string).split_token())
     output = []
     for command, next_op in steps_exec:
         if is_skip_command(operator) and is_boolean_command(command[0]):
             command = handle_com_substitution(command)
-            result = handle_exit_status(' '.join(command))
+            result = handle_exit_status(command)
             output.append(result)
         operator = next_op
+        if terminate:
+            return
     return output
 
 
@@ -33,7 +38,7 @@ def handle_com_substitution(arguments):
     - If string isn't empty then run handle logical operator to get result of that command
     - If string is empty not need do anthing
     '''
-    global com_sub
+    global terminate, com_sub
     new_command = []
     for arg in arguments:
         result = check_command_sub(arg)
@@ -44,6 +49,8 @@ def handle_com_substitution(arguments):
             com_sub = False
         elif result:
             new_command.append(arg)
+        if terminate:
+            return
     return new_command
 
 
@@ -114,7 +121,7 @@ def builtins_export(variables=[]):  # implement export
             else:
                 exit_value = 1
                 Shell.printf('intek-sh: export: `%s\': '
-                              'not a valid identifier\n' % variable)
+                             'not a valid identifier\n' % variable)
     else:
         env = builtins_printenv()[1].split('\n')
         result = []
@@ -130,7 +137,7 @@ def builtins_unset(variables=[]):  # implement unset
         if not check_name(variable):
             exit_value = 1
             Shell.printf('intek-sh: unset: `%s\': not a valid identifier\n'
-                          % variable)
+                         % variable)
         elif variable in os.environ:
             os.environ.pop(variable)
     return exit_value, ''
@@ -149,19 +156,20 @@ def builtins_exit(exit_code):  # implement exit
 
 
 def run_execution(command, args):
-    global com_sub
+    global process, com_sub
     output = []
     try:
         process = Popen([command]+args, stdout=PIPE, stderr=PIPE)
-        out, err = process.communicate()  # byte
+        line = process.stdout.readline().decode()
+        while line:
+            if not com_sub:
+                Shell.printf(line.strip())
+            output.append(line)
+            line = process.stdout.readline().decode()
         process.wait()
         exit_value = process.returncode
         if exit_value:
-            message = err.decode()
-        if out:
-            output.append(out.decode())
-            if not com_sub:
-                Shell.printf(out.decode())
+            message = process.stderr.read().decode()
     except PermissionError:
         exit_value = 126
         message = 'intek-sh: %s: Permission denied' % command
@@ -215,25 +223,55 @@ def run_command(command, args=[]):
     return 127, ''
 
 
-def handle_exit_status(string):
-    if '*' in string or '?' in string:
-        string = glob_string(string)
-    command = string.split()[0]
-    args = string[len(command):].split()
+def handle_exit_status(args):
+    global terminate
+    if terminate:
+        return
+    for i, arg in enumerate(args):
+        if '*' in arg or '?' in arg:
+            args[i] = glob_string(arg)
+    command = args.pop(0)
     exit_value, output = run_command(command, args)
     os.environ['?'] = str(exit_value)
     return output
+
+
+def handle_signal(sig, frame):
+    global process, terminate
+    Shell.printf("^C")
+    terminate = False
+    if process:
+        try:
+            terminate = True
+            os.kill(process.pid, sig)
+        except ProcessLookupError:
+            pass
+    os.environ['?'] = str(130)
 
 
 def show_error(error):
     Shell.printf(error)
 
 
-def main():
-    global com_sub
+def setup_terminal():
+    os.environ['?'] = '0'
+    reset_terminal()
+    signal(SIGINT, handle_signal)
+    signal(SIGTERM, SIG_IGN)
+    signal(SIGQUIT, SIG_IGN)
+
+
+def reset_terminal():
+    global process, terminate, com_sub
+    com_sub = False
+    process = None
+    terminate = False
     shell = Shell()
+
+
+def main():
+    setup_terminal()
     while True:
-        com_sub = False
         try:
             input_user = process_input()
             handle_logic_op(input_user)
@@ -241,6 +279,14 @@ def main():
             pass
         except EOFError:
             break
+        except TypeError:
+            # when terminate is True
+            pass
+        except ValueError:
+            # outrange chr()
+            pass
+        reset_terminal()
+    builtins_exit('0')
 
 
 if __name__ == '__main__':
