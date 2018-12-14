@@ -106,10 +106,10 @@ class Shell:
         pos = Shell.cursor_pos()
         if string.endswith('\n'):
             Shell.add_str(pos[0], pos[1], string)
-            Shell.write_log(new='@'+string, mode='a')
+            # Shell.write_log(new='@'+string, mode='a')
         else:
             Shell.add_str(pos[0], pos[1], string+end)
-            Shell.write_log(new='@'+string+end, mode='a')
+            # Shell.write_log(new='@'+string+end, mode='a')
 
     @classmethod
     def move(Shell, y, x, refresh=True):
