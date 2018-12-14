@@ -101,7 +101,7 @@ def process_KEY_TAB(input, input_pos):
         if string != complete_tab(input[:insert_pos]):
             string = complete_tab(input[:insert_pos])
             input = string + input[insert_pos:]
-            Shell.write_log(new=input[insert_pos:], end='')
+            Shell.write_log(new=input[insert_pos:], end='',mode='a')
         Shell.last_key = 'TAB'
     Shell.add_str(input_pos[0], 10, input)
     step = Shell.step(input_pos[0], input_pos[1]) + len(string)
@@ -153,8 +153,10 @@ def process_insert_mode(input, input_pos, char, last_data):
 
 def process_input():
     input = ""
+    last_key = Shell.last_key
 
     if Shell.restore:
+        
         try:
             input = Shell.HISTORY_STACK[-1]
             char = Shell.getch(Shell.PROMPT, restore=input)
@@ -168,8 +170,10 @@ def process_input():
         char = Shell.getch(Shell.PROMPT)
         input_pos = Shell.cursor_pos()
     
-
     last_data = Shell.read_log()
+    
+    if last_key == 'TAB2':
+        last_data = last_data[:last_data.rfind(Shell.PROMPT)+len(Shell.PROMPT)]
     Shell.can_break = False
     while char not in ['\n']:
         ######################### KEY process ####################################
@@ -220,9 +224,12 @@ def process_input():
         # Insert mode
         if char != '':
             Shell.last_key = char
-            
             input, input_pos = process_insert_mode(input, input_pos, char, last_data)
-            Shell.write_log(last_data,input)
+
+        
+
+        Shell.write_log(last_data, input)
+
         Shell.restore = False
         char = chr(window.getch())
 
@@ -249,7 +256,6 @@ def process_input():
         input = ""
     else:
         window.addstr("\n")
-
     window.refresh()
     return input
 
