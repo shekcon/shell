@@ -50,8 +50,6 @@ def handle_com_substitution(arguments):
 def check_command_sub(arg):
     if arg.startswith('`') and arg.endswith('`'):
         return arg[1:-1:].strip()
-    if arg.startswith('\\`') and arg.endswith('\\`'):
-        return arg[2:-2:].strip()
     return arg
 
 
@@ -233,9 +231,9 @@ def show_error(error):
 
 def main():
     global com_sub
-    com_sub = False
     shell = Shell()
     while True:
+        com_sub = False
         try:
             input_user = process_input()
             handle_logic_op(input_user)
