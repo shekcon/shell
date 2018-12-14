@@ -88,10 +88,11 @@ def process_KEY_TAB(input, input_pos):
     string = input
     if Shell.last_key in ['TAB', 'TAB2']:  # second TAB
         data = complete_double_tab(input)
-        if len(data):
+        if len(data) and data != input:
             Shell.printf('\n'+pformat(data, Shell.WIDTH))
             Shell.last_key = 'TAB2'
             Shell.can_break = True
+            Shell.restore = True
             return input
     else:
         pos = Shell.cursor_pos()
@@ -154,10 +155,14 @@ def process_input():
     input = ""
 
     if Shell.restore:
-        input = Shell.HISTORY_STACK[-1]
-        char = Shell.getch(Shell.PROMPT, restore=input)
-        Shell.restore = False
-        input_pos = Shell.cursor_pos()[0], len(Shell.PROMPT)
+        try:
+            input = Shell.HISTORY_STACK[-1]
+            char = Shell.getch(Shell.PROMPT, restore=input)
+            Shell.restore = False
+            input_pos = Shell.cursor_pos()[0], len(Shell.PROMPT)
+        except IndexError:
+            char = Shell.getch(Shell.PROMPT)
+            input_pos = Shell.cursor_pos()
 
     else:
         char = Shell.getch(Shell.PROMPT)
@@ -215,8 +220,10 @@ def process_input():
         # Insert mode
         if char != '':
             Shell.last_key = char
+            
             input, input_pos = process_insert_mode(input, input_pos, char, last_data)
             Shell.write_log(last_data,input)
+        Shell.restore = False
         char = chr(window.getch())
 
     if Shell.last_key not in['TAB2']:
@@ -224,7 +231,7 @@ def process_input():
         window.move(step // Shell.WIDTH, step % Shell.WIDTH)
         Shell.write_log(new='\n',mode='a')
 
-    if input not in ['\n', '']:
+    if input not in ['\n', ''] or Shell.can_break is True:
         try:
             if Shell.HISTORY_STACK[-1] != input:
                 Shell.HISTORY_STACK.append(input)
@@ -233,12 +240,16 @@ def process_input():
                 Shell.HISTORY_STACK.append(input)
                 Shell.STACK_CURRENT_INDEX = 0
 
+
+    if not Shell.can_break:
+        Shell.last_key = '\n'
+
     if Shell.last_key in ['TAB2']:
         Shell.printf(Shell.PROMPT, end='', write_log=False)
-        Shell.restore = True
         input = ""
     else:
         window.addstr("\n")
+
     window.refresh()
     return input
 

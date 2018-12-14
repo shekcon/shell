@@ -98,11 +98,14 @@ def complete_tab(string):
 def complete_double_tab(string):
     data = ''
     if string.endswith(' '):
-        data = "\n".join(get_suggest('', 'file'))
+        data = "\n".join([os.path.split(i)[1] for i in get_suggest('', 'file')])
+
     elif string.endswith('/'):
-        data = "\n".join(get_suggest(truncate(string), 'file'))
+        data = "\n".join([os.path.split(i)[1] for i in get_suggest(truncate(string), 'file')])
     else:
         data =  "\n".join(get_suggest(truncate(string), 'command'))
+    if not data:
+        return string
     return data
 
 if __name__ == '__main__':
