@@ -4,7 +4,7 @@ from sys import exit as exit_program
 from globbing import glob_string
 from parse_command_shell import Token
 from logical_operators import *
-from process_keys import *
+from process_keys import process_input, curses, Shell
 from signal import signal
 from signal import SIG_IGN, SIGINT, SIGQUIT, SIGTERM, signal
 
@@ -17,11 +17,11 @@ def handle_logic_op(string, operator=None):
     - Else exit status is 0 and operator is 'or' then skip
     - After handle command substitution then run exit status of command
     '''
-    global terminate, subshell
+    global terminate
     steps_exec = parse_command_operator(Token(string).split_token())
     output = []
     for command, next_op in steps_exec:
-        if is_skip_command(operator) and is_boolean_command(command[0]) and check_syntax_sub(command):
+        if is_skip_command(operator) and is_boolean_command(command[0]):
             if check_subshell(command[0]):
                 handle_subshell(command[0][1:-1])
             else:
@@ -58,31 +58,26 @@ def handle_com_substitution(arguments):
 
 
 def handle_subshell(command):
-    global com_sub
+    if check_syntax_sub(command):
+        return
     try:
         pid = os.fork()
     except OSError:
         pass
     if pid == 0:
         handle_logic_op(command)
-        # com_sub = True
-        # output = handle_logic_op(command)
-        # child = open(os.path.join(pwd, '.childpid'), 'w')
-        # child.writelines(output)
-        # curses.endwin()
         exit_program(int(os.environ['?']))
     exit_code = os.wait()[1]
-    window.refresh()
     os.environ['?'] = str(exit_code)
 
 
 def check_syntax_sub(command):
-    if check_subshell(command[0]) and len(command) > 1:
+    if len(command) > 1:
         Shell.printf("parse subshell error")
     else:
-        return True
+        return False
     os.environ['?'] = '1'
-    return False
+    return True
 
 
 def check_command_sub(arg):
@@ -101,7 +96,7 @@ def builtins_cd(directory):  # implement cd
             os.environ['OLDPWD'] = os.getcwd()
             os.chdir(directory)  # change working directory
             os.environ['PWD'] = os.getcwd()
-            exit_value, output = 0, ''
+            exit_value = 0
         except FileNotFoundError:
             exit_value, message = 1, 'intek-sh: cd: %s: No ' \
                 'such file or directory\n' % directory
@@ -292,9 +287,8 @@ def show_error(error):
 
 
 def setup_terminal():
-    global subshell, terminate
+    global terminate
     terminate = False
-    subshell = False
     os.environ['?'] = '0'
     reset_terminal()
     signal(SIGINT, handle_signal)
@@ -304,11 +298,9 @@ def setup_terminal():
 
 
 def reset_terminal():
-    global process, terminate, com_sub, subshell
+    global process, terminate, com_sub
     if terminate:
         os.environ['?'] = '130'
-    if subshell:
-        revert_env_main()
     com_sub = False
     process = None
     terminate = False
@@ -330,6 +322,8 @@ def main():
         except ValueError:
             # outrange chr()
             pass
+        except Exception as e:
+            Shell.printf(str(e))
         reset_terminal()
     builtins_exit()
 
