@@ -1,18 +1,11 @@
 import curses
-import os
-#from completion import handle_completion, get_suggest
+from os.path import expanduser
 
 global window
 window = curses.initscr()
 
 
-def write_file(content):
-    with open('debug', 'w') as f:
-        f.write(str(content))
-
-
 class Shell:
-
     PROMPT = 'intek-sh$ '
     HISTORY_STACK = []
     STACK_CURRENT_INDEX = 0
@@ -25,14 +18,13 @@ class Shell:
         self._set_up_window()
         self._set_up_vars()
         self._update_winsize()
+        self._init_history()
 
     def _set_up_window(self):
         window.keypad(True)
         window.scrollok(True)
 
     def _set_up_curses(self):
-        #global window
-        #window = curses.initscr()
         curses.noecho()
 
     def _set_up_vars(self):
@@ -42,22 +34,27 @@ class Shell:
         - last_key: store the last single input key
         - input : store the current input line 
         """
-        Shell.windowlog = 'windowlog'
+        Shell.windowlog = '/'.join([expanduser('~'), 'windowlog'])
         open(Shell.windowlog, 'w').close()
-        Shell.historylog = 'history'
-        open(Shell.historylog, 'w').close()
+        Shell.historylog = '/'.join([expanduser('~'), 'history'])
+        open(Shell.historylog, 'a+').close()
         Shell.newline_mark = '@'
         Shell.last_key = ''
         Shell.input = ''
-        Shell.go_to_end = False
-        Shell.go_to_home = False
         Shell.can_break = False
         Shell.restore = False
 
     def _update_winsize(self):
         Shell.HEIGHT, Shell.WIDTH = window.getmaxyx()
 
+    def _init_history(self):
+        with open(Shell.historylog, 'r') as f:
+            for line in f:
+                Shell.HISTORY_STACK.append(line.strip())
+        return
+
     ##########################################################################
+
     @classmethod
     def read_log(Shell):
         return open(Shell.windowlog, 'r').read().replace(Shell.newline_mark, '')
@@ -72,7 +69,6 @@ class Shell:
             open(Shell.windowlog, mode).write(last_data+new+end)
         else:
             open(Shell.windowlog, mode).write(new+end)
-        Shell.move(pos[0], pos[1])
 
     @classmethod
     def cursor_pos(Shell):
@@ -80,17 +76,17 @@ class Shell:
         return pos[0], pos[1]
 
     @classmethod
-    def getch(Shell, append_log=False, prompt=True, restore=False):
+    def getch(Shell, append_log=True, prompt=True, restore=False):
         """ get a character from input """
         pos = Shell.cursor_pos()
+        data = Shell.PROMPT
+        if restore:
+            data = Shell.PROMPT + restore
         if prompt:
-            if not restore:
-                Shell.add_str(pos[0], 0, Shell.PROMPT)
-            else:
-                Shell.add_str(pos[0], 0, Shell.PROMPT + restore)
-                window.refresh()
+            Shell.add_str(pos[0], 0, data)
+
         if append_log:
-            Shell.write_log(Shell.PROMPT, end='', mode='a')
+            Shell.write_log(new=data, end='', mode='a')
 
         return chr(window.getch())
 
@@ -101,29 +97,32 @@ class Shell:
         window.refresh()
 
     @classmethod
-    def printf(Shell, string="", end='\n'):
+    def printf(Shell, string="", end='\n', pretty=False, write_log=True):
         """ interpreted python print function to work with curses """
         pos = Shell.cursor_pos()
         if string.endswith('\n'):
             Shell.add_str(pos[0], pos[1], string)
-            Shell.write_log(new='@'+string, mode='a')
+            if write_log:
+                Shell.write_log(new='@'+string, mode='a')
         else:
             Shell.add_str(pos[0], pos[1], string+end)
-            Shell.write_log(new='@'+string+end, mode='a')
+            if write_log:
+                Shell.write_log(new='@'+string+end, mode='a')
 
     @classmethod
     def move(Shell, y, x, refresh=True):
         window.refresh()
         if x < Shell.WIDTH and x >= 0:
-            window.move(y, x)
+            curses.setsyx(y, x)
         else:
             if x > 0:
                 if y+1 < Shell.HEIGHT:
-                    window.move(y+1, 0)
+                    curses.setsyx(y+1, 0)
                 else:
-                    window.move(y, 0)
+                    curses.setsyx(y, 0)
             else:
-                window.move(y-1, Shell.WIDTH-1)
+                curses.setsyx(y-1, Shell.WIDTH-1)
+        curses.doupdate()
 
     @classmethod
     def count_lines(Shell, string):
@@ -154,6 +153,7 @@ class Shell:
 
     @classmethod
     def read_nlines(Shell, startl, n=1, reverse=False):
+        """ read number of lines from current window """
         pos = Shell.cursor_pos()
         content = ''
         if not reverse:
@@ -174,3 +174,34 @@ class Shell:
     def step(Shell, y, x, yStart=0, xStart=0):
         """ return int step from (yStart, xStart) to (y, x) """
         return y*Shell.WIDTH + x - yStart*Shell.WIDTH - xStart
+
+    @classmethod
+    def display_history(Shell, index=False):
+        if not index:
+            for i in range(len(Shell.HISTORY_STACK)):
+                Shell.printf("{:3d}".format(i)+'  ' +
+                             str(Shell.HISTORY_STACK[i]))
+        else:
+            Shell.HISTORY_STACK.pop()
+            Shell.STACK_CURRENT_INDEX = 0
+            Shell.printf(Shell.HISTORY_STACK[index])
+            return Shell.HISTORY_STACK[index]
+
+    @classmethod
+    def save_history(Shell):
+        with open(Shell.historylog, 'a') as f:
+            f.write('\n'.join(Shell.HISTORY_STACK))
+        return
+
+    @classmethod
+    def clear(Shell):
+        window.clear()
+        window.refresh()
+        open(Shell.windowlog, 'w').close()
+
+    @classmethod
+    def restore_window(Shell):
+        window.clear()
+        window.refresh()
+        data = Shell.read_log()
+        Shell.add_str(0, 0, data)
