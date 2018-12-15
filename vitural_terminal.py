@@ -69,7 +69,6 @@ class Shell:
             open(Shell.windowlog, mode).write(last_data+new+end)
         else:
             open(Shell.windowlog, mode).write(new+end)
-        #Shell.move(pos[0], pos[1])
 
     @classmethod
     def cursor_pos(Shell):
@@ -155,6 +154,7 @@ class Shell:
 
     @classmethod
     def read_nlines(Shell, startl, n=1, reverse=False):
+        """ read number of lines from current window """
         pos = Shell.cursor_pos()
         content = ''
         if not reverse:

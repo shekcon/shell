@@ -108,7 +108,6 @@ def process_KEY_TAB(input, input_pos):
     Shell.move(step//Shell.WIDTH, step%Shell.WIDTH)
     return input
 
-
 def process_KEY_DELETE(input, input_pos):
     pos = Shell.cursor_pos()
     del_loc = Shell.step(pos[0], pos[1]) - Shell.step(input_pos[0], input_pos[1])
@@ -121,7 +120,6 @@ def process_KEY_DELETE(input, input_pos):
     return input
 
 
-
 def process_KEY_RESIZE(input, input_pos):
     window.clear()
     window.refresh()
@@ -130,15 +128,10 @@ def process_KEY_RESIZE(input, input_pos):
     Shell.HEIGHT, Shell.WIDTH = window.getmaxyx()
     pos = Shell.cursor_pos()
     # Recalculate input position
-    step = pos[0]*Shell.WIDTH + pos[1]
-    loc_step = step - len(input)
+    loc_step = Shell.step(pos[0], pos[1]) - len(input)
     input_pos = loc_step//Shell.WIDTH, loc_step % Shell.WIDTH
     Shell.move(pos[0], pos[1])
     return input, input_pos
-    # Move the cursor to new location after resize
-    #window.move(Shell.step(input_pos[0], input_pos[1]) + len(input)//Shell.WIDTH, (Shell.step(input_pos[0], input_pos[1]) + len(input)) % Shell.WIDTH)
-    
-
 
 def process_insert_mode(input, input_pos, char, last_data):
     pos = Shell.cursor_pos()
@@ -160,7 +153,6 @@ def process_input():
     last_key = Shell.last_key
 
     if Shell.restore:
-        
         try:
             input = Shell.HISTORY_STACK[-1]
             char = Shell.getch(Shell.PROMPT, restore=input)
@@ -183,7 +175,6 @@ def process_input():
         ######################### KEY process ####################################
         """
             This block's purposes are handling special KEYS
-            Add feature on this block
         """
         if char == chr(curses.KEY_RESIZE):
             input, input_pos = process_KEY_RESIZE(input, input_pos)
@@ -230,7 +221,6 @@ def process_input():
             Shell.last_key = char
             input, input_pos = process_insert_mode(input, input_pos, char, last_data)
 
-        
 
         Shell.write_log(last_data, input)
 
@@ -250,7 +240,6 @@ def process_input():
         except IndexError:
                 Shell.HISTORY_STACK.append(input)
                 Shell.STACK_CURRENT_INDEX = 0
-
 
     if not Shell.can_break:
         Shell.last_key = '\n'
