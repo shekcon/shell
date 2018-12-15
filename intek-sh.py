@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-from subprocess import Popen, PIPE
+from subprocess import Popen, PIPE, STDOUT
 from sys import exit as exit_program
 from globbing import glob_string
 from path_expansions import path_expansions, check_name
 from parse_command_shell import Token
 from logical_operators import *
 from process_keys import *
-from signal import signal
+from redirections import run_redirections
 from signal import SIG_IGN, SIGINT, SIGQUIT, SIGTERM, signal
 
 
@@ -100,6 +100,7 @@ def builtins_printenv(variables=[]):  # implement printenv
 
 def builtins_export(variables=[]):  # implement export
     exit_value = 0
+    output = ''
     if variables:
         for variable in variables:
             if '=' in variable:
@@ -146,32 +147,32 @@ def builtins_exit(exit_code):  # implement exit
     exit_program(exit_value)
 
 
-def run_execution(command, args):
+def run_execution(command, args, inp=PIPE, out=PIPE):
     global process, com_sub
     output = []
     try:
-        process = Popen([command]+args, stdout=PIPE, stderr=PIPE)
-        line = process.stdout.readline().decode()
-        while line:
-            if not com_sub:
-                Shell.printf(line.strip())
-            output.append(line)
+        process = Popen([command]+args, stdin=inp, stdout=out, stderr=STDOUT)
+        if out == PIPE and inp == PIPE:
             line = process.stdout.readline().decode()
+            while line:
+                if not com_sub:
+                    Shell.printf(line.strip())
+                output.append(line)
+                line = process.stdout.readline().decode()
+        elif out == PIPE:
+            content = process.stdout.read().decode()
+            output.append(content)
         process.wait()
         exit_value = process.returncode
-        if exit_value:
-            message = process.stderr.read().decode()
     except PermissionError:
         exit_value = 126
-        message = 'intek-sh: %s: Permission denied' % command
+        Shell.printf('intek-sh: %s: Permission denied' % command)
     except FileNotFoundError:
         exit_value = 127
-        message = 'intek-sh: %s: command not found' % command
+        Shell.printf('intek-sh: %s: command not found' % command)
     except Exception as e:
         exit_value = 1
-        message = str(e)
-    if exit_value:
-        show_error(message)
+        Shell.printf(str(e))
     return exit_value, ''.join(output)
 
 
@@ -188,17 +189,17 @@ def run_builtins(command, args):
         return builtins_exit(' '.join(args))
 
 
-def run_utility(command, args):
+def run_utility(command, args, inp=PIPE, out=PIPE):
     paths = os.environ['PATH'].split(':')
     for path in paths:
         realpath = path + '/' + command
         if os.path.exists(realpath):
-            return run_execution(realpath, args)
-    show_error('intek-sh: %s: command not found' % command)
+            return run_execution(realpath, args, inp=inp, out=out)
+    Shell.printf('intek-sh: %s: command not found' % command)
     return 127, ''
 
 
-def run_command(command, args=[]):
+def run_command(command, args=[], inp=PIPE, out=PIPE):
     global com_sub
     built_ins = ('cd', 'printenv', 'export', 'unset', 'exit')
     if command in built_ins:
@@ -207,10 +208,10 @@ def run_command(command, args=[]):
             Shell.printf(output)
         return exit_code, output
     elif '/' in command:
-        return run_execution(command, args)
+        return run_execution(command, args, inp=inp, out=out)
     elif 'PATH' in os.environ:
-        return run_utility(command, args)
-    show_error('intek-sh: %s: command not found' % command)
+        return run_utility(command, args, inp=inp, out=out)
+    Shell.printf('intek-sh: %s: command not found' % command)
     return 127, ''
 
 
@@ -218,15 +219,24 @@ def handle_exit_status(args):
     global terminate
     if terminate:
         return
+
+    # path expansions
     exit_value, args = path_expansions(args)
     if exit_value:
-        show_error(args)
+        Shell.printf(args)
         return ''
+
+    # globbing
     for i, arg in enumerate(args):
         if '*' in arg or '?' in arg:
             args[i] = glob_string(arg)
+
+    # redirections
+    inp, out, args = run_redirections(args)
     command = args.pop(0)
-    exit_value, output = run_command(command, args)
+    exit_value, output = run_command(command, args, inp=inp, out=out)
+
+    # exit status
     os.environ['?'] = str(exit_value)
     return output
 
@@ -244,8 +254,8 @@ def handle_signal(sig, frame):
     os.environ['?'] = str(130)
 
 
-def show_error(error):
-    Shell.printf(error)
+# def show_error(error):
+#     Shell.printf(error)
 
 
 def setup_terminal():
@@ -261,7 +271,7 @@ def reset_terminal():
     com_sub = False
     process = None
     terminate = False
-    shell = Shell()
+    Shell()
 
 
 def main():
