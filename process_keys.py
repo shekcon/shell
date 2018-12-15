@@ -269,4 +269,7 @@ if __name__ == '__main__':
             break
         elif input == 'history':
             Shell.display_history()
+        elif input == 'clear':
+            Shell.clear()
+            pass
     curses.endwin()

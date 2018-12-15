@@ -197,5 +197,9 @@ class Shell:
             f.write('\n'.join(Shell.HISTORY_STACK))
         return
 
-    
+    @classmethod
+    def clear(Shell):
+        window.clear()
+        window.refresh()
+        open(Shell.windowlog,'w').close()
 

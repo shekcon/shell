@@ -105,7 +105,7 @@ def complete_double_tab(string):
         data = "\n".join([os.path.split(i)[1] for i in get_suggest(truncate(string), 'file')])
     else:
         data =  "\n".join(get_suggest(truncate(string), 'command'))
-    if not data:
+    if not data or data == ls[-1]:
         return string
     return data
 
