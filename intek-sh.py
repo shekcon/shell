@@ -4,7 +4,7 @@ from sys import exit as exit_program
 from globbing import glob_string
 from parse_command_shell import Token
 from logical_operators import *
-from process_keys import *
+from process_keys import curses, process_input, Shell
 from signal import signal
 from signal import SIG_IGN, SIGINT, SIGQUIT, SIGTERM, signal
 
@@ -259,6 +259,7 @@ def setup_terminal():
     signal(SIGINT, handle_signal)
     signal(SIGTERM, SIG_IGN)
     signal(SIGQUIT, SIG_IGN)
+    Shell()
 
 
 def reset_terminal():
@@ -266,7 +267,6 @@ def reset_terminal():
     com_sub = False
     process = None
     terminate = False
-    shell = Shell()
 
 
 def main():
