@@ -97,6 +97,8 @@ def complete_tab(string):
 
 
 def complete_double_tab(string):
+    if not len(string):
+        return ""
     ls = string.split()
     data = ''
     if string.endswith(' '):
@@ -105,7 +107,9 @@ def complete_double_tab(string):
         data = "\n".join([os.path.split(i)[1] for i in get_suggest(truncate(string), 'file')])
     else:
         data =  "\n".join(get_suggest(truncate(string), 'command'))
-    if not data or data == ls[-1]:
+    if not data:
+        return string
+    elif len(ls) and data == ls[-1]:
         return string
     return data
 

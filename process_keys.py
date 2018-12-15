@@ -149,6 +149,7 @@ def process_insert_mode(input, input_pos, char, last_data):
 
 def process_input():
     input = ""
+    Shell.restore_window()
     last_key = Shell.last_key
 
     if Shell.restore:

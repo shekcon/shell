@@ -35,15 +35,13 @@ class Shell:
         - last_key: store the last single input key
         - input : store the current input line 
         """
-        Shell.windowlog = 'windowlog'
+        Shell.windowlog = '/'.join([expanduser('~'), 'windowlog'])
         open(Shell.windowlog, 'w').close()
         Shell.historylog = '/'.join([expanduser('~'), 'history'])
         open(Shell.historylog, 'a+').close()
         Shell.newline_mark = '@'
         Shell.last_key = ''
         Shell.input = ''
-        Shell.go_to_end = False
-        Shell.go_to_home = False
         Shell.can_break = False
         Shell.restore = False
 
@@ -203,3 +201,9 @@ class Shell:
         window.refresh()
         open(Shell.windowlog,'w').close()
 
+    @classmethod
+    def restore_window(Shell):
+        window.clear()
+        window.refresh()
+        data = Shell.read_log()
+        Shell.add_str(0, 0, data)
