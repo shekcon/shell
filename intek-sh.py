@@ -6,6 +6,7 @@ from path_expansions import path_expansions, check_name
 from parse_command_shell import Token
 from logical_operators import *
 from process_keys import *
+from pipes import parse_pipes
 from redirections import run_redirections
 from signal import SIG_IGN, SIGINT, SIGQUIT, SIGTERM, signal
 
@@ -227,14 +228,33 @@ def handle_exit_status(args):
         return ''
 
     # globbing
-    for i, arg in enumerate(args):
-        if '*' in arg or '?' in arg:
-            args[i] = glob_string(arg)
+    # for i, arg in enumerate(args):
+    #     if '*' in arg or '?' in arg:
+    #         args[i] = glob_string(arg)
 
-    # redirections
-    inp, out, args = run_redirections(args)
-    command = args.pop(0)
-    exit_value, output = run_command(command, args, inp=inp, out=out)
+    # pipes
+    if '|' in args:
+        pipes = parse_pipes(args)
+        for pipe in pipes:
+            inp, out, others = run_redirections(pipe)
+            if inp == PIPE:
+                try:
+                    inp = open('.output_last_pipe', 'r')
+                except FileNotFoundError:
+                    inp = PIPE
+            command = others.pop(0)
+            exit_value, output = run_command(command, others, inp, out)
+            if output:
+                with open('.output_last_pipe', 'w+') as f:
+                    f.write(output)
+                    f.close()
+            elif os.path.exists('.output_last_pipe'):
+                    os.remove('.output_last_pipe')
+    else:
+        # redirections
+        inp, out, args = run_redirections(args)
+        command = args.pop(0)
+        exit_value, output = run_command(command, args, inp=inp, out=out)
 
     # exit status
     os.environ['?'] = str(exit_value)
