@@ -89,18 +89,19 @@ def truncate(string):
         return ""
 
 def complete_tab(string):
+    args = string.split()
     mode = 'command'
-    if "/" in truncate(string):
+    if "/" in truncate(string) or len(args) > 1:
         mode = 'files'
     return handle_completion(string, mode)
 
 
 def complete_double_tab(string):
+    ls = string.split()
     data = ''
     if string.endswith(' '):
         data = "\n".join([os.path.split(i)[1] for i in get_suggest('', 'file')])
-
-    elif string.endswith('/'):
+    elif string.endswith('/') or len(ls) > 1:
         data = "\n".join([os.path.split(i)[1] for i in get_suggest(truncate(string), 'file')])
     else:
         data =  "\n".join(get_suggest(truncate(string), 'command'))

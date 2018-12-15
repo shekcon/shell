@@ -117,16 +117,16 @@ class Shell:
     def move(Shell, y, x, refresh=True):
         window.refresh()
         if x < Shell.WIDTH and x >= 0:
-            window.move(y, x)
+            curses.setsyx(y, x)
         else:
             if x > 0:
                 if y+1 < Shell.HEIGHT:
-                    window.move(y+1, 0)
+                    curses.setsyx(y+1, 0)
                 else:
-                    window.move(y, 0)
+                    curses.setsyx(y, 0)
             else:
-                window.move(y-1, Shell.WIDTH-1)
-
+                curses.setsyx(y-1, Shell.WIDTH-1)
+        curses.doupdate()
 
 
     @classmethod
