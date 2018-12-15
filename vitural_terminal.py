@@ -124,15 +124,15 @@ class Shell:
                     window.move(y+1, 0)
                 else:
                     window.move(y, 0)
-            else:#Shell.write_log(overwrite_last_data=last_data, new=Shell.read_nlines(startl=input_pos[0], n = Shell.count_lines(input)), end='', mode='w')
-                w#Shell.write_log(overwrite_last_data=last_data, new=Shell.read_nlines(startl=input_pos[0], n = Shell.count_lines(input)), end='', mode='w')
+            else:
+                window.move(y-1, Shell.WIDTH-1)
 
 
 
     @classmethod
-    def count_lin#Shell.write_log(overwrite_last_data=last_data, new=Shell.read_nlines(startl=input_pos[0], n = Shell.count_lines(input)), end='', mode='w')
-        """ retur#Shell.write_log(overwrite_last_data=last_data, new=Shell.read_nlines(startl=input_pos[0], n = Shell.count_lines(input)), end='', mode='w') based on window width """
-        return (l#Shell.write_log(overwrite_last_data=last_data, new=Shell.read_nlines(startl=input_pos[0], n = Shell.count_lines(input)), end='', mode='w')IDTH + 1
+    def count_lines(Shell, string):
+        """ return number of line the string can takk place based on window width """
+        return (len(string) + len(Shell.PROMPT)) // Shell.WIDTH + 1
 
     @classmethod
     def del_nlines(Shell, n=1, startl=False, revese=True):
