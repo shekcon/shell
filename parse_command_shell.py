@@ -18,8 +18,8 @@ class Token():
         self.escape = True
 
     def _check_stack(self):
-        if len(self.param) > 2 and self.param[-2:] == "${" and not (
-                len(self.param) > 3 and self.param[-3:] == "\\${"):
+        if len(self.param) > 1 and self.param[-2:] == "${" and not (
+                len(self.param) > 2 and self.param[-3:] == "\\${"):
             self.stack.append("}")
         elif self.key != "`" and ((self.param and self.param[-1:] == "`") and
                                   not (self.stack and self.stack[-1] == '`') and
