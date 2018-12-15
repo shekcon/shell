@@ -199,9 +199,18 @@ def process_input():
             Shell.last_key = char
             process_KEY_RIGHT(input, input_pos)
             char = ''
+        elif char == chr(curses.KEY_HOME):
+            Shell.last_key = char
+            Shell.move_relative(input_pos, len(input))
+            char = ''
+
+        elif char == chr(curses.KEY_END):
+            Shell.last_key = char
+            Shell.move_relative(input_pos, 0)
+            char = ''
 
         elif char == chr(curses.KEY_BACKSPACE) or ord(char) == 127:  # curses.BACKSPACE
-            Shell.last_key = ''
+            Shell.last_key = char
             input = process_KEY_BACKSPACE(input, input_pos)
             char = ''
 
@@ -212,6 +221,7 @@ def process_input():
             char = ''
 
         elif char == chr(curses.KEY_DC):
+            Shell.last_key = char
             input = process_KEY_DELETE(input, input_pos)
             char = ''
 
