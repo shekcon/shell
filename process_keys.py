@@ -126,14 +126,18 @@ def process_KEY_RESIZE(input, input_pos):
     window.clear()
     window.refresh()
     data = Shell.read_log()
-    window.addstr(0, 0, data)
-    window.refresh()
+    Shell.add_str(0, 0, data)
     Shell.HEIGHT, Shell.WIDTH = window.getmaxyx()
     pos = Shell.cursor_pos()
+    # Recalculate input position
     step = pos[0]*Shell.WIDTH + pos[1]
     loc_step = step - len(input)
     input_pos = loc_step//Shell.WIDTH, loc_step % Shell.WIDTH
-    #window.move(input_pos[0] + lens//self.width, (step + lens) % self.width)
+    Shell.move(pos[0], pos[1])
+    return input, input_pos
+    # Move the cursor to new location after resize
+    #window.move(Shell.step(input_pos[0], input_pos[1]) + len(input)//Shell.WIDTH, (Shell.step(input_pos[0], input_pos[1]) + len(input)) % Shell.WIDTH)
+    
 
 
 def process_insert_mode(input, input_pos, char, last_data):
@@ -182,7 +186,7 @@ def process_input():
             Add feature on this block
         """
         if char == chr(curses.KEY_RESIZE):
-            process_KEY_RESIZE(input, input_pos)
+            input, input_pos = process_KEY_RESIZE(input, input_pos)
             char = ''
 
         elif char == chr(curses.KEY_UP):

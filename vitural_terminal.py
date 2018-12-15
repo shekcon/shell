@@ -69,7 +69,7 @@ class Shell:
             open(Shell.windowlog, mode).write(last_data+new+end)
         else:
             open(Shell.windowlog, mode).write(new+end)
-        Shell.move(pos[0], pos[1])
+        #Shell.move(pos[0], pos[1])
 
     @classmethod
     def cursor_pos(Shell):
