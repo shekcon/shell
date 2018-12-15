@@ -110,7 +110,7 @@ def process_KEY_TAB(input, input_pos):
 
 def process_KEY_DELETE(input, input_pos):
     pos = Shell.cursor_pos()
-    del_loc = Shell.step(pos[0], pos[1]) - Shell.step(input_pos[0], input_pos[1])
+    del_loc = Shell.step(pos[0], pos[1]) - Shell.step(input_pos[0], input_pos[1]) + 1
     if del_loc > 0:
         input = input[:del_loc-1] + input[del_loc:]
     Shell.del_nlines(Shell.count_lines(
@@ -143,7 +143,6 @@ def process_insert_mode(input, input_pos, char, last_data):
     if Shell.step(input_pos[0], input_pos[1]) + len(input) > Shell.WIDTH * Shell.HEIGHT:
         input_pos = input_pos[0] - 1, input_pos[1]
     window.addstr(input_pos[0], input_pos[1], input)
-    #Shell.write_log(overwrite_last_data=last_data, new=Shell.read_nlines(startl=input_pos[0], n = Shell.count_lines(input)), end='', mode='w')
     Shell.move(pos[0], pos[1]+1)
     return input, input_pos
 
@@ -167,7 +166,6 @@ def process_input():
         input_pos = Shell.cursor_pos()
     
     last_data = Shell.read_log()
-    
     if last_key == 'TAB2':
         last_data = last_data[:last_data.rfind(Shell.PROMPT)+len(Shell.PROMPT)]
     Shell.can_break = False
@@ -199,12 +197,12 @@ def process_input():
             Shell.last_key = char
             process_KEY_RIGHT(input, input_pos)
             char = ''
-        elif char == chr(curses.KEY_HOME):
+        elif char == chr(curses.KEY_END):
             Shell.last_key = char
             Shell.move_relative(input_pos, len(input))
             char = ''
 
-        elif char == chr(curses.KEY_END):
+        elif char == chr(curses.KEY_HOME):
             Shell.last_key = char
             Shell.move_relative(input_pos, 0)
             char = ''

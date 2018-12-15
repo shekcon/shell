@@ -1,15 +1,12 @@
 import curses
-import os
+from os.path import expanduser
+
 #from completion import handle_completion, get_suggest
 
 global window
 window = curses.initscr()
-def write_file(content):
-    with open('debug','w') as f:
-        f.write(str(content))
 
 class Shell:
-
     PROMPT = 'intek-sh$ '
     HISTORY_STACK = []
     STACK_CURRENT_INDEX = 0
@@ -22,14 +19,13 @@ class Shell:
         self._set_up_window()
         self._set_up_vars()
         self._update_winsize()
+        self._init_history()
 
     def _set_up_window(self):
         window.keypad(True)
         window.scrollok(True)
 
     def _set_up_curses(self):
-        #global window
-        #window = curses.initscr()
         curses.noecho()
 
     def _set_up_vars(self):
@@ -41,8 +37,8 @@ class Shell:
         """
         Shell.windowlog = 'windowlog'
         open(Shell.windowlog, 'w').close()
-        Shell.historylog = 'history'
-        open(Shell.historylog,'w').close()
+        Shell.historylog = '/'.join([expanduser('~'), 'history'])
+        open(Shell.historylog, 'a+').close()
         Shell.newline_mark = '@'
         Shell.last_key = ''
         Shell.input = ''
@@ -53,6 +49,14 @@ class Shell:
 
     def _update_winsize(self):
         Shell.HEIGHT, Shell.WIDTH = window.getmaxyx()
+    
+
+    def _init_history(self):
+        with open(Shell.historylog, 'r') as f:
+            for line in f:
+                Shell.HISTORY_STACK.append(line.strip())
+        return
+
 
     ##########################################################################
     @classmethod
@@ -120,15 +124,15 @@ class Shell:
                     window.move(y+1, 0)
                 else:
                     window.move(y, 0)
-            else:
-                window.move(y-1, Shell.WIDTH-1)
+            else:#Shell.write_log(overwrite_last_data=last_data, new=Shell.read_nlines(startl=input_pos[0], n = Shell.count_lines(input)), end='', mode='w')
+                w#Shell.write_log(overwrite_last_data=last_data, new=Shell.read_nlines(startl=input_pos[0], n = Shell.count_lines(input)), end='', mode='w')
 
 
 
     @classmethod
-    def count_lines(Shell, string):
-        """ return number of line the string can takk place based on window width """
-        return (len(string) + len(Shell.PROMPT)) // Shell.WIDTH + 1
+    def count_lin#Shell.write_log(overwrite_last_data=last_data, new=Shell.read_nlines(startl=input_pos[0], n = Shell.count_lines(input)), end='', mode='w')
+        """ retur#Shell.write_log(overwrite_last_data=last_data, new=Shell.read_nlines(startl=input_pos[0], n = Shell.count_lines(input)), end='', mode='w') based on window width """
+        return (l#Shell.write_log(overwrite_last_data=last_data, new=Shell.read_nlines(startl=input_pos[0], n = Shell.count_lines(input)), end='', mode='w')IDTH + 1
 
     @classmethod
     def del_nlines(Shell, n=1, startl=False, revese=True):
@@ -186,3 +190,12 @@ class Shell:
             Shell.STACK_CURRENT_INDEX = 0
             Shell.printf(Shell.HISTORY_STACK[index])
             return Shell.HISTORY_STACK[index]
+
+    @classmethod
+    def save_history(Shell):
+        with open(Shell.historylog, 'a') as f:
+            f.write('\n'.join(Shell.HISTORY_STACK))
+        return
+
+    
+
