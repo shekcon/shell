@@ -22,9 +22,12 @@ def handle_logic_op(string, operator=None):
     output = []
     for command, next_op in steps_exec:
         if is_skip_command(operator) and is_boolean_command(command[0]):
-            command = handle_com_substitution(command)
-            result = handle_exit_status(command)
-            output.append(result)
+            if check_subshell(command[0]):
+                handle_subshell(command)
+            else:
+                command = handle_com_substitution(command)
+                result = handle_exit_status(command)
+                output.append(result)
         operator = next_op
         if terminate:
             return
@@ -54,32 +57,61 @@ def handle_com_substitution(arguments):
     return new_command
 
 
+def handle_subshell(command):
+    if check_syntax_sub(command):
+        return
+    try:
+        pid = os.fork()
+    except OSError:
+        pass
+    if pid == 0:
+        handle_logic_op(command[0][1:-1])
+        exit_program(int(os.environ['?']))
+    exit_code = os.wait()[1]
+    os.environ['?'] = str(exit_code)
+
+
+def check_syntax_sub(command):
+    if len(command) > 1:
+        Shell.printf("intek-sh: parse subshell error")
+        os.environ['?'] = '1'
+    else:
+        return False
+    return True
+
+
 def check_command_sub(arg):
     if arg.startswith('`') and arg.endswith('`'):
         return arg[1:-1:].strip()
     return arg
 
 
-def builtins_cd(directory=''):  # implement cd
+def check_subshell(command):
+    return command.startswith("(") and command.endswith(")")
+
+
+def builtins_cd(directory):  # implement cd
     if directory:
         try:
             os.environ['OLDPWD'] = os.getcwd()
             os.chdir(directory)  # change working directory
             os.environ['PWD'] = os.getcwd()
-            exit_value, output = 0, ''
+            exit_value = 0
         except FileNotFoundError:
-            exit_value, output = 1, 'intek-sh: cd: %s: No ' \
+            exit_value, message = 1, 'intek-sh: cd: %s: No ' \
                 'such file or directory\n' % directory
     else:  # if variable directory is empty, change working dir into homepath
         if 'HOME' not in os.environ:
-            exit_value, output = 1, 'intek-sh: cd: HOME not set'
+            exit_value, message = 1, 'intek-sh: cd: HOME not set'
         else:
             os.environ['OLDPWD'] = os.getcwd()
             homepath = os.environ['HOME']
             os.chdir(homepath)
             os.environ['PWD'] = os.getcwd()
-            exit_value, output = 0, ''
-    return exit_value, output
+            exit_value = 0
+    if exit_value:
+        show_error(message)
+    return exit_value, ''
 
 
 def builtins_printenv(variables=[]):  # implement printenv
@@ -109,6 +141,7 @@ def check_name(name):
 
 def builtins_export(variables=[]):  # implement export
     exit_value = 0
+    output = []
     if variables:
         for variable in variables:
             if '=' in variable:
@@ -128,7 +161,7 @@ def builtins_export(variables=[]):  # implement export
         for line in env:
             result.append('declare -x ' + line.replace('=', '=\"', 1) + '\"')
         output = '\n'.join(result)
-    return exit_value, output
+    return exit_value, '\n'.join(output)
 
 
 def builtins_unset(variables=[]):  # implement unset
@@ -143,7 +176,7 @@ def builtins_unset(variables=[]):  # implement unset
     return exit_value, ''
 
 
-def builtins_exit(exit_code):  # implement exit
+def builtins_exit(exit_code='0'):  # implement exit
     Shell.printf('exit')
     exit_value = 0
     if exit_code:
@@ -186,7 +219,7 @@ def run_execution(command, args):
 
 def run_builtins(command, args):
     if command == 'cd':
-        return builtins_cd(' '.join(args))
+        return builtins_cd(args[0] if args else '')
     elif command == 'printenv':
         return builtins_printenv(args)
     elif command == 'export':
@@ -194,7 +227,7 @@ def run_builtins(command, args):
     elif command == 'unset':
         return builtins_unset(args)
     else:
-        return builtins_exit(' '.join(args))
+        return builtins_exit(args[0] if args else '')
 
 
 def run_utility(command, args):
@@ -212,7 +245,7 @@ def run_command(command, args=[]):
     built_ins = ('cd', 'printenv', 'export', 'unset', 'exit')
     if command in built_ins:
         exit_code, output = run_builtins(command, args)
-        if not com_sub:
+        if not com_sub and output:
             Shell.printf(output)
         return exit_code, output
     elif '/' in command:
@@ -242,11 +275,11 @@ def handle_signal(sig, frame):
     terminate = False
     if process:
         try:
-            terminate = True
             os.kill(process.pid, sig)
+            terminate = True
         except ProcessLookupError:
             pass
-    os.environ['?'] = str(130)
+    os.environ['?'] = '130'
 
 
 def show_error(error):
@@ -254,6 +287,8 @@ def show_error(error):
 
 
 def setup_terminal():
+    global terminate
+    terminate = False
     os.environ['?'] = '0'
     reset_terminal()
     signal(SIGINT, handle_signal)
@@ -264,6 +299,8 @@ def setup_terminal():
 
 def reset_terminal():
     global process, terminate, com_sub
+    if terminate:
+        os.environ['?'] = '130'
     com_sub = False
     process = None
     terminate = False
@@ -285,8 +322,10 @@ def main():
         except ValueError:
             # outrange chr()
             pass
+        except Exception as e:
+            Shell.printf(str(e))
         reset_terminal()
-    builtins_exit('0')
+    builtins_exit()
 
 
 if __name__ == '__main__':
