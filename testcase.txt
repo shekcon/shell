@@ -2,4 +2,4 @@
 test subshell environment
 --------------------------
 cd .. && pwd && (cd .. && pwd && export LOGNAME=shekcon && printenv LOGNAME) && pwd && printenv LOGNAME
-(export HOME=lsang LSANG=shekcon && printenv HOME && printenv LSANG ) && printenv HOME && printenv LSANG 
+(export HOME=INTEK LSANG=shekcon && printenv HOME && printenv LSANG ) && printenv HOME && printenv LSANG 

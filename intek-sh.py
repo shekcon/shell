@@ -4,7 +4,7 @@ from sys import exit as exit_program
 from globbing import glob_string
 from parse_command_shell import Token
 from logical_operators import *
-from process_keys import Shell, process_input, curses
+from process_keys import *
 from signal import signal
 from signal import SIG_IGN, SIGINT, SIGQUIT, SIGTERM, signal
 
@@ -23,9 +23,7 @@ def handle_logic_op(string, operator=None):
     for command, next_op in steps_exec:
         if is_skip_command(operator) and is_boolean_command(command[0]) and check_syntax_sub(command):
             if check_subshell(command[0]):
-                create_subshell()
-                handle_logic_op(command[0][1:-1])
-                revert_env_main()
+                handle_subshell(command[0][1:-1])
             else:
                 command = handle_com_substitution(command)
                 result = handle_exit_status(command)
@@ -59,19 +57,23 @@ def handle_com_substitution(arguments):
     return new_command
 
 
-def create_subshell():
-    global main_env, subshell
-    subshell = True
-    main_env = os.environ.copy()
-
-
-def revert_env_main():
-    global main_env, subshell
-    main_env['?'] = os.environ['?']
-    os.environ = main_env
-    if os.getcwd() != os.environ['PWD']:
-        builtins_cd(os.environ['PWD'])
-    subshell = False
+def handle_subshell(command):
+    global com_sub
+    try:
+        pid = os.fork()
+    except OSError:
+        pass
+    if pid == 0:
+        handle_logic_op(command)
+        # com_sub = True
+        # output = handle_logic_op(command)
+        # child = open(os.path.join(pwd, '.childpid'), 'w')
+        # child.writelines(output)
+        # curses.endwin()
+        exit_program(int(os.environ['?']))
+    exit_code = os.wait()[1]
+    window.refresh()
+    os.environ['?'] = str(exit_code)
 
 
 def check_syntax_sub(command):
