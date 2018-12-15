@@ -27,30 +27,35 @@ def process_KEY_UP(input, curs_pos):
 
 
 def process_KEY_DOWN(input, curs_pos):
-        try:
-            if len(Shell.HISTORY_STACK) == 0:
-                return input
-            if input not in [Shell.HISTORY_STACK[Shell.STACK_CURRENT_INDEX], '\n', '']:
-                Shell.HISTORY_STACK.append(input)
-                Shell.STACK_CURRENT_INDEX += 1
-            if Shell.STACK_CURRENT_INDEX != -1:  # Not meet the end of stack
-                Shell.del_nlines(Shell.count_lines(
-                    Shell.HISTORY_STACK[Shell.STACK_CURRENT_INDEX]))
-                # print the previous
-                window.addstr(
-                    curs_pos[0], 0, Shell.PROMPT + Shell.HISTORY_STACK[Shell.STACK_CURRENT_INDEX+1])
-                input = Shell.HISTORY_STACK[Shell.STACK_CURRENT_INDEX+1]
-                Shell.STACK_CURRENT_INDEX += 1
-            else:
-                if input is not Shell.HISTORY_STACK[-1]:  # EndOfStack
-                    Shell.del_nlines(
-                        Shell.count_lines(Shell.HISTORY_STACK[-1]))
-                    window.addstr(
-                        curs_pos[0], 0, Shell.PROMPT + Shell.HISTORY_STACK[-1])
-                    input = Shell.HISTORY_STACK[-1]
+    try:
+        if len(Shell.HISTORY_STACK) == 0:
             return input
-        except IndexError:
-            pass
+        if input not in [Shell.HISTORY_STACK[Shell.STACK_CURRENT_INDEX], '\n', '']:
+            Shell.HISTORY_STACK.append(input)
+            Shell.STACK_CURRENT_INDEX += 1
+
+        if Shell.STACK_CURRENT_INDEX != -1:  # Not meet the end of stack
+            try :
+                Shell.HISTORY_STACK[Shell.STACK_CURRENT_INDEX+1]
+            except IndexError:
+                return input
+            Shell.del_nlines(Shell.count_lines(
+                Shell.HISTORY_STACK[Shell.STACK_CURRENT_INDEX]))
+            # print the previous
+            window.addstr(
+                curs_pos[0], 0, Shell.PROMPT + Shell.HISTORY_STACK[Shell.STACK_CURRENT_INDEX+1])
+            input = Shell.HISTORY_STACK[Shell.STACK_CURRENT_INDEX+1]
+            Shell.STACK_CURRENT_INDEX += 1
+        else:
+            if input is not Shell.HISTORY_STACK[-1]:  # EndOfStack
+                Shell.del_nlines(
+                    Shell.count_lines(Shell.HISTORY_STACK[-1]))
+                window.addstr(
+                    curs_pos[0], 0, Shell.PROMPT + Shell.HISTORY_STACK[-1])
+                input = Shell.HISTORY_STACK[-1]
+        return input
+    except IndexError:
+        pass
 
 
 def process_KEY_LEFT(input, input_pos):
@@ -66,7 +71,7 @@ def process_KEY_LEFT(input, input_pos):
 def process_KEY_RIGHT(input, input_pos):
     pos = Shell.cursor_pos()
     step = pos[0]*Shell.WIDTH + pos[1] + 1
-    if Shell.step(pos[0], pos[1]) <= Shell.step(input_pos[0], input_pos[1]) + len(input):
+    if Shell.step(pos[0], pos[1]) < Shell.step(input_pos[0], input_pos[1]) + len(input):
         Shell.move(step // Shell.WIDTH, step % Shell.WIDTH)
 
 
