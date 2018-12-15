@@ -238,7 +238,7 @@ def process_input():
 
     if Shell.last_key not in['TAB2']:
         step = input_pos[0]*Shell.WIDTH + input_pos[1] + len(input)
-        window.move(step // Shell.WIDTH, step % Shell.WIDTH)
+        Shell.move(step // Shell.WIDTH, step % Shell.WIDTH)
         Shell.write_log(new='\n',mode='a')
 
     if input not in ['\n', ''] or Shell.can_break is True:
