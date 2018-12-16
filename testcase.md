@@ -202,3 +202,10 @@ bash: syntax error near unexpected token `||'
 shekcon@Intek:~/Deployment/Test$ < haha echo > dawd |
 > |
 bash: syntax error near unexpected token `|'
+ls > ls.out | grep a | grep b
+ls -la >> ls.out
+< ls.in ls > ls.out | grep a || echo haha
+< ls.in ls > ls.out | grep a && echo haha
+< ls.in ls > ls.out | grep ls < ls.out
+< file > new ls | grep a
+<file >new ls | grep a
