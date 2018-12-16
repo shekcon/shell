@@ -1,5 +1,4 @@
 #!/usr/bin/env python3
-import os
 from os import path
 from subprocess import PIPE
 from process_keys import *
@@ -26,35 +25,30 @@ def output_redirection(args):
                 mode = 'a+'
             except PermissionError:
                 Shell.printf('bash: ' + stdout_file + ': Permission denied')
-                return PIPE, []
-        elif args[i] in ('>', '1>'):
+                return PIPE, [], 126
+        elif args[i] in ('>'):
             stdout_file = args[i+1]
             try:
                 open(stdout_file, 'w+').close()
                 mode = 'w+'
             except PermissionError:
                 Shell.printf('bash: ' + stdout_file + ': Permission denied')
-                return PIPE, []
-        # elif args[i] in ('2>>'):
-        #     stderr_file = args[i+1]
-        #     open(stderr_file, 'a+').close()
-        # elif args[i] in ('2>'):
-        #     stderr_file = args[i+1]
-        #     open(stderr_file, 'w+').close()
+                return PIPE, [], 126
         else:
             other_args.append(args[i])
             i -= 1
         i += 2
 
     if mode:
-        return open(stdout_file, mode), other_args
+        return open(stdout_file, mode), other_args, 0
     else:
-        return PIPE, other_args
+        return PIPE, other_args, 0
 
 
 def input_redirection(args):
     stdin_file = ''
     other_args = []
+    exit_value = 0
     i = 0
     while i < len(args):
         if args[i] in ('<'):
@@ -62,13 +56,14 @@ def input_redirection(args):
             if not path.isfile(stdin_file):
                 Shell.printf('bash: ' + stdin_file +
                              ': No such file or directory')
-                os.environ['?'] = '1'
-                return PIPE, []
+                # return PIPE, [], 1
+                exit_value = 1
             try:
                 open(stdin_file, 'r').close()
             except PermissionError:
                 Shell.printf('bash: ' + stdin_file + ': Permission denied')
-                return PIPE, []
+                # return PIPE, [], 126
+                exit_value = 126
             i += 1
         elif args[i] == '<<':
             # every content between args[i+1] and args[-1] is content of
@@ -82,13 +77,13 @@ def input_redirection(args):
             other_args.append(args[i])
         i += 1
     if stdin_file:
-        return open(stdin_file, 'r'), other_args
+        return open(stdin_file, 'r'), other_args, exit_value
     else:
-        return PIPE, other_args
+        return PIPE, other_args, exit_value
 
 
 def run_redirections(args):
-    _stdout, args = output_redirection(args)
-    _stdin, args = input_redirection(args)
-    return _stdin, _stdout, args
+    _stdout, args, exit_value = output_redirection(args)
+    _stdin, args, exit_value = input_redirection(args)
+    return _stdin, _stdout, args, exit_value
 

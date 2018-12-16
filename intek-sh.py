@@ -151,7 +151,7 @@ def run_execution(command, args, inp=PIPE, out=PIPE):
     global process
     output = []
     try:
-        process = Popen([command]+args, stdin=inp, stdout=out, stderr=STDOUT)
+        process = Popen([command]+args, stdin=inp, stdout=out, stderr=PIPE)
         if out == PIPE and inp == PIPE:
             line = process.stdout.readline().decode()
             while line:
@@ -164,6 +164,9 @@ def run_execution(command, args, inp=PIPE, out=PIPE):
             if not com_sub and not in_pipes:
                 Shell.printf(content)
             output.append(content)
+        for line in process.stderr:
+            if line.decode() not in ['', '\n']:
+                Shell.printf(line.decode())
         process.wait()
         exit_value = process.returncode
     except PermissionError:
@@ -230,13 +233,14 @@ def parse_pipes(args):
 def run_pipes(args):
     global in_pipes
     output = ''
+    exit_value = 0
     pipes = parse_pipes(args)
     for pipe in pipes:
         if pipe is not pipes[-1]:
             in_pipes = True
         else:
             in_pipes = False
-        inp, out, others = run_redirections(pipe)
+        inp, out, others, exit_value = run_redirections(pipe)
         if inp == PIPE and os.path.exists('.output_last_pipe'):
             inp = open('.output_last_pipe', 'r')
         command = others.pop(0)
@@ -247,7 +251,7 @@ def run_pipes(args):
                 f.close()
         elif output and os.path.exists('.output_last_pipe'):
             os.remove('.output_last_pipe')
-    return output
+    return output, exit_value
 
 
 def handle_exit_status(args):
@@ -266,12 +270,14 @@ def handle_exit_status(args):
 
     # run pipes and redirections
     if '|' in args:
-        output = run_pipes(args)
+        run_redirections(args)
+        output, exit_value = run_pipes(args)
     else:
         # redirections
-        inp, out, args = run_redirections(args)
+        inp, out, args, exit_value = run_redirections(args)
         command = args.pop(0)
         exit_value, output = run_command(command, args, inp=inp, out=out)
+
 
     # exit status
     os.environ['?'] = str(exit_value)
