@@ -46,10 +46,11 @@ def handle_com_substitution(arguments):
     for arg in arguments:
         result = check_command_sub(arg)
         if result and result != arg:
-            com_sub = True
-            valids = [arg for arg in handle_logic_op(result) if arg]
-            new_command += [e for arg in valids for e in arg.split('\n')]
-            com_sub = False
+            if check_syntax_shell(result):
+                com_sub = True
+                valids = [arg for arg in handle_logic_op(result) if arg]
+                new_command += [e for arg in valids for e in arg.split('\n')]
+                com_sub = False
         elif result:
             new_command.append(arg)
         if terminate:
@@ -58,8 +59,6 @@ def handle_com_substitution(arguments):
 
 
 def handle_subshell(command):
-    if check_syntax_sub(command):
-        return
     try:
         pid = os.fork()
     except OSError:
@@ -69,15 +68,6 @@ def handle_subshell(command):
         exit_program(int(os.environ['?']))
     exit_code = os.wait()[1]
     os.environ['?'] = str(exit_code)
-
-
-def check_syntax_sub(command):
-    if len(command) > 1:
-        Shell.printf("intek-sh: parse subshell error")
-        os.environ['?'] = '1'
-    else:
-        return False
-    return True
 
 
 def check_command_sub(arg):
@@ -258,7 +248,7 @@ def run_command(command, args=[]):
 
 def handle_exit_status(args):
     global terminate
-    if terminate:
+    if terminate and args:
         return
     for i, arg in enumerate(args):
         if '*' in arg or '?' in arg:
@@ -267,6 +257,17 @@ def handle_exit_status(args):
     exit_value, output = run_command(command, args)
     os.environ['?'] = str(exit_value)
     return output
+
+
+def check_syntax_shell(string):
+    parse = Token(string)
+    parse.split_token()
+    message = parse.check_syntax()
+    if message:
+        show_error(message)
+        os.environ['?'] = '1'
+        return False
+    return True
 
 
 def handle_signal(sig, frame):
@@ -283,7 +284,8 @@ def handle_signal(sig, frame):
 
 
 def show_error(error):
-    Shell.printf(error)
+    if error:
+        Shell.printf(error)
 
 
 def setup_terminal():
@@ -311,7 +313,8 @@ def main():
     while True:
         try:
             input_user = process_input()
-            handle_logic_op(input_user)
+            if check_syntax_shell(input_user):
+                handle_logic_op(input_user)
         except IndexError:
             pass
         except EOFError:
