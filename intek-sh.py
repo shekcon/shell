@@ -238,7 +238,7 @@ def run_command(command, args=[], inp=PIPE, out=PIPE):
     built_ins = ('cd', 'printenv', 'export', 'unset', 'exit', 'history', 'clear')
     if command in built_ins:
         exit_code, output = run_builtins(command, args)
-        if not com_sub and output:
+        if not com_sub and output and not exit_code and not in_pipes:
             Shell.printf(output)
         return exit_code, output
     elif '/' in command:
