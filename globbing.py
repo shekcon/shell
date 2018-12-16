@@ -27,8 +27,8 @@ def get_ll_dir(directory):
 
 def multi_glob(tokens):
     result = []
-    for i, token in enumerate(tokens):
-        if '*' in token or '?' in token:
+    for token in tokens:
+        if '*' in token or '?' in token and not token.startswith("\\"):
             gl = globbing(token)
             if gl:
                 result.extend(gl)
