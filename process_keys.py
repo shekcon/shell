@@ -1,9 +1,14 @@
 from pprint import pformat
-
+import re
 from completion import (complete_double_tab, complete_tab, get_suggest,
                         handle_completion)
 from vitural_terminal import *
 
+def process_history(arg):
+    if arg == '!!':
+        return Shell.HISTORY_STACK[-1]
+    else:
+        return Shell.HISTORY_STACK[int(arg[1:])]
 
 def process_KEY_UP(input, curs_pos):
     try:
@@ -252,18 +257,29 @@ def process_input():
         Shell.restore = False
         char = chr(window.getch())
 
+    _input = input
+    ################### retrieve history command ############
+    if input.startswith('!'):
+        Shell.HISTORY_STACK.pop()
+    ls_re = re.split('(!!|!-?\d*)', input)
+    for c in ls_re:
+        if '!' in c:
+            if input.startswith('!'):
+                Shell.printf(process_history(c))
+            input = input.replace(c, process_history(c))
+    #########################################################
     if Shell.last_key not in['TAB2']:
         step = input_pos[0]*Shell.WIDTH + input_pos[1] + len(input)
         Shell.move(step // Shell.WIDTH, step % Shell.WIDTH)
         Shell.write_log(new='\n', mode='a')
 
-    if input not in ['\n', ''] or Shell.can_break is True:
+    if _input not in ['\n', ''] or Shell.can_break is True:
         try:
-            if Shell.HISTORY_STACK[-1] != input:
-                Shell.HISTORY_STACK.append(input)
+            if Shell.HISTORY_STACK[-1] != _input:
+                Shell.HISTORY_STACK.append(_input)
             Shell.STACK_CURRENT_INDEX = 0
         except IndexError:
-            Shell.HISTORY_STACK.append(input)
+            Shell.HISTORY_STACK.append(_input)
             Shell.STACK_CURRENT_INDEX = 0
 
     if not Shell.can_break:

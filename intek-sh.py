@@ -160,6 +160,7 @@ def builtins_unset(variables=[]):  # implement unset
 
 
 def builtins_exit(exit_code='0'):  # implement exit
+    Shell.save_history()
     Shell.printf('exit')
     exit_value = 0
     if exit_code:
@@ -214,6 +215,10 @@ def run_builtins(command, args):
         return builtins_export(args)
     elif command == 'unset':
         return builtins_unset(args)
+    elif command == 'history':
+        return Shell.display_history()
+    elif command == 'clear':
+        return Shell.clear()
     else:
         return builtins_exit(args[0] if args else '')
 
@@ -230,7 +235,7 @@ def run_utility(command, args, inp=PIPE, out=PIPE):
 
 def run_command(command, args=[], inp=PIPE, out=PIPE):
     global com_sub
-    built_ins = ('cd', 'printenv', 'export', 'unset', 'exit')
+    built_ins = ('cd', 'printenv', 'export', 'unset', 'exit', 'history', 'clear')
     if command in built_ins:
         exit_code, output = run_builtins(command, args)
         if not com_sub and output:
