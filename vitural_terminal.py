@@ -57,7 +57,15 @@ class Shell:
 
     @classmethod
     def read_log(Shell):
-        return open(Shell.windowlog, 'r').read().replace(Shell.newline_mark, '')
+        data = []
+        with open(Shell.windowlog, 'r') as f:
+            for line in f:
+                data.append(line)
+        if len(data) > Shell.HEIGHT:
+            data = data[-Shell.HEIGHT:]
+            with open(Shell.windowlog, 'w') as f:
+                f.write(''.join(data).replace(Shell.newline_mark, ''))
+        return ''.join(data).replace(Shell.newline_mark, '')
 
     @classmethod
     def write_log(Shell, overwrite_last_data=False, new='', end='', mode='w'):
@@ -202,6 +210,5 @@ class Shell:
     @classmethod
     def restore_window(Shell):
         window.clear()
-        window.refresh()
         data = Shell.read_log()
         Shell.add_str(0, 0, data)

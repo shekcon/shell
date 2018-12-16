@@ -7,7 +7,6 @@ from globbing import multi_glob
 from logical_operators import *
 from parse_command_shell import Token
 from path_expansions import check_name, path_expansions
-from process_keys import *
 from process_keys import Shell, curses, process_input
 from quoting import Quote
 from redirections import run_redirections
