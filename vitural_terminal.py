@@ -193,7 +193,7 @@ class Shell:
             Shell.HISTORY_STACK.pop()
             Shell.STACK_CURRENT_INDEX = 0
             Shell.printf(Shell.HISTORY_STACK[index])
-            return Shell.HISTORY_STACK[index]
+            return 0, Shell.HISTORY_STACK[index]
 
     @classmethod
     def save_history(Shell):
@@ -212,3 +212,17 @@ class Shell:
         window.clear()
         data = Shell.read_log()
         Shell.add_str(0, 0, data)
+
+    @classmethod
+    def get_history(Shell, input_user):
+        try:
+            if input_user[1] == '!':
+                Shell.HISTORY_STACK.pop()
+                Shell.printf(Shell.HISTORY_STACK[-1])
+                return Shell.HISTORY_STACK[-1]
+            else:
+                Shell.HISTORY_STACK.pop()
+                Shell.printf(Shell.HISTORY_STACK[input_user[1]])
+                return Shell.HISTORY_STACK[input_user[1]]
+        except IndexError:
+            return input_user
