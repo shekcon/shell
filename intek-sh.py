@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-from subprocess import Popen, PIPE, STDOUT
-from sys import exit as exit_program
-# from globbing import multi_glob
-from path_expansions import path_expansions, check_name
-from parse_command_shell import Token
-from logical_operators import *
-from process_keys import curses, process_input, Shell
-from signal import signal
-from process_keys import *
-from redirections import run_redirections
 from signal import SIG_IGN, SIGINT, SIGQUIT, SIGTERM, signal
+from subprocess import PIPE, Popen
+from sys import exit as exit_program
+
+from globbing import multi_glob
+from logical_operators import *
+from parse_command_shell import Token
+from path_expansions import check_name, path_expansions
+from process_keys import *
+from process_keys import Shell, curses, process_input
+from quoting import Quote
+from redirections import run_redirections
 
 
 def handle_logic_op(string, operator=None):
@@ -267,6 +268,7 @@ def run_pipes(args):
         inp, out, others, exit_value = run_redirections(pipe, in_pipes)
         if inp == PIPE and os.path.exists('.output_last_pipe'):
             inp = open('.output_last_pipe', 'r')
+        handle_quotes(args)
         command = others.pop(0)
         exit_value, output = run_command(command, others, inp, out)
         if output:
@@ -286,11 +288,13 @@ def handle_exit_status(args):
     # path expansions
     exit_value, args = path_expansions(args)
     if exit_value:
+        os.environ['?'] = str(exit_value)
         Shell.printf(args)
+        terminate = True
         return ''
 
     # globbing
-    # args = multi_glob(args)
+    args = multi_glob(args)
 
     # run pipes and redirections
     if '|' in args:
@@ -299,6 +303,7 @@ def handle_exit_status(args):
     else:
         # redirections
         inp, out, args, exit_value = run_redirections(args, in_pipes)
+        handle_quotes(args)
         command = args.pop(0)
         exit_value, output = run_command(command, args, inp=inp, out=out)
 
@@ -306,6 +311,11 @@ def handle_exit_status(args):
     # exit status
     os.environ['?'] = str(exit_value)
     return output
+
+
+def handle_quotes(args):
+    for i in range(len(args)):
+        args[i] = Quote(args[i]).remove_quote()
 
 
 def check_syntax_shell(string):
