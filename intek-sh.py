@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
 from subprocess import Popen, PIPE, STDOUT
 from sys import exit as exit_program
-from globbing import glob_string
+from globbing import multi_glob
 from path_expansions import path_expansions, check_name
 from parse_command_shell import Token
 from logical_operators import *
 from process_keys import *
-from pipes import parse_pipes
 from redirections import run_redirections
 from signal import SIG_IGN, SIGINT, SIGQUIT, SIGTERM, signal
 
@@ -149,19 +148,21 @@ def builtins_exit(exit_code):  # implement exit
 
 
 def run_execution(command, args, inp=PIPE, out=PIPE):
-    global process, com_sub
+    global process
     output = []
     try:
         process = Popen([command]+args, stdin=inp, stdout=out, stderr=STDOUT)
         if out == PIPE and inp == PIPE:
             line = process.stdout.readline().decode()
             while line:
-                if not com_sub:
+                if not com_sub and not in_pipes:
                     Shell.printf(line.strip())
                 output.append(line)
                 line = process.stdout.readline().decode()
         elif out == PIPE:
             content = process.stdout.read().decode()
+            if not com_sub and not in_pipes:
+                Shell.printf(content)
             output.append(content)
         process.wait()
         exit_value = process.returncode
@@ -216,6 +217,39 @@ def run_command(command, args=[], inp=PIPE, out=PIPE):
     return 127, ''
 
 
+def parse_pipes(args):
+    pipes = []
+    while '|' in args:
+        index = args.index('|')
+        pipes.append(args[:index])
+        args = args[index+1:]
+    pipes.append(args)
+    return pipes
+
+
+def run_pipes(args):
+    global in_pipes
+    output = ''
+    pipes = parse_pipes(args)
+    for pipe in pipes:
+        if pipe is not pipes[-1]:
+            in_pipes = True
+        else:
+            in_pipes = False
+        inp, out, others = run_redirections(pipe)
+        if inp == PIPE and os.path.exists('.output_last_pipe'):
+            inp = open('.output_last_pipe', 'r')
+        command = others.pop(0)
+        exit_value, output = run_command(command, others, inp, out)
+        if output:
+            with open('.output_last_pipe', 'w+') as f:
+                f.write(output)
+                f.close()
+        elif output and os.path.exists('.output_last_pipe'):
+            os.remove('.output_last_pipe')
+    return output
+
+
 def handle_exit_status(args):
     global terminate
     if terminate:
@@ -228,28 +262,11 @@ def handle_exit_status(args):
         return ''
 
     # globbing
-    # for i, arg in enumerate(args):
-    #     if '*' in arg or '?' in arg:
-    #         args[i] = glob_string(arg)
+    args = multi_glob(args)
 
-    # pipes
+    # run pipes and redirections
     if '|' in args:
-        pipes = parse_pipes(args)
-        for pipe in pipes:
-            inp, out, others = run_redirections(pipe)
-            if inp == PIPE:
-                try:
-                    inp = open('.output_last_pipe', 'r')
-                except FileNotFoundError:
-                    inp = PIPE
-            command = others.pop(0)
-            exit_value, output = run_command(command, others, inp, out)
-            if output:
-                with open('.output_last_pipe', 'w+') as f:
-                    f.write(output)
-                    f.close()
-            elif os.path.exists('.output_last_pipe'):
-                    os.remove('.output_last_pipe')
+        output = run_pipes(args)
     else:
         # redirections
         inp, out, args = run_redirections(args)
@@ -287,7 +304,8 @@ def setup_terminal():
 
 
 def reset_terminal():
-    global process, terminate, com_sub
+    global process, terminate, com_sub, in_pipes
+    in_pipes = False
     com_sub = False
     process = None
     terminate = False
