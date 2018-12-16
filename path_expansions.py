@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 
-from os import path, getenv
 import os
+from os import getenv, path
 
 
 def check_name(name):
@@ -51,7 +51,7 @@ def parameter_expansions(args):
             continue
         if arg == '$' or '$' not in arg:
             continue
-        if arg[0] in ('"', "'",'`', '(') and arg[-1] in ('"', "'",'`', ')'):
+        if arg[0] in ('"', "'", '`', '(') and arg[-1] in ('"', "'", '`', ')'):
             args[i] = arg[1:-1]
             continue
         # if arg.startswith('\"'):
@@ -69,7 +69,7 @@ def parameter_expansions(args):
                     arg[i] = arg[:arg.find('${')] + arg[arg.find('}')+1:]
                     continue
                 else:
-                    return 1, 'bash: ${' + name + '}: bad substitution'
+                    return 1, 'intek-sh: ${' + name + '}: bad substitution'
             if '$' in arg:
                 j = arg.index('$') + 1
                 while j < len(arg) and (arg[j].isalnum() or arg[j] == '_'):
@@ -83,7 +83,3 @@ def path_expansions(args):
     args = tilde_expansions(args)
     exit_value, args = parameter_expansions(args)
     return exit_value, args
-
-
-# if __name__ == "__main__":
-#     print(path_expansions(['echo', '$PATH', '${LOGNAME }', 'intek']))

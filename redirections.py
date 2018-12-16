@@ -1,7 +1,9 @@
 #!/usr/bin/env python3
 from os import path
 from subprocess import PIPE
+
 from process_keys import *
+
 
 '''
 > : Directs the output of a command into a file.
@@ -26,17 +28,19 @@ def output_redirection(args, in_pipes):
                 mode = 'a+'
             except PermissionError:
                 if not in_pipes:
-                    Shell.printf('bash: ' + stdout_file + ': Permission denied')
+                    Shell.printf('intek-sh: ' + stdout_file +
+                                 ': Permission denied')
                 exit_value = 126
                 stdout_file = ''
-        elif args[i] in ('>'):
+        elif args[i] == '>':
             stdout_file = args[i+1]
             try:
                 open(stdout_file, 'w+').close()
                 mode = 'w+'
             except PermissionError:
                 if not in_pipes:
-                    Shell.printf('bash: ' + stdout_file + ': Permission denied')
+                    Shell.printf('intek-sh: ' + stdout_file +
+                                 ': Permission denied')
                 exit_value = 126
                 stdout_file = ''
         else:
@@ -56,12 +60,12 @@ def input_redirection(args, in_pipes):
     exit_value = 0
     i = 0
     while i < len(args):
-        if args[i] in ('<'):
+        if args[i] == '<':
             stdin_file = args[i+1]
             if not path.isfile(stdin_file):
                 if not in_pipes:
-                    Shell.printf('bash: ' + stdin_file +
-                                ': No such file or directory')
+                    Shell.printf('intek-sh: ' + stdin_file +
+                                 ': No such file or directory')
                 exit_value = 1
                 stdin_file = ''
             else:
@@ -69,7 +73,8 @@ def input_redirection(args, in_pipes):
                     open(stdin_file, 'r').close()
                 except PermissionError:
                     if not in_pipes:
-                        Shell.printf('bash: ' + stdin_file + ': Permission denied')
+                        Shell.printf('intek-sh: ' + stdin_file +
+                                     ': Permission denied')
                     exit_value = 126
             i += 1
         elif args[i] == '<<':

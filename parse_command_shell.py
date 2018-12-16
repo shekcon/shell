@@ -19,13 +19,14 @@ class Token():
 
     def _check_stack(self):
         flag = False
-        if self.key not in ["'", '"'] and (self.stack and self.stack[-1] not in ["'", '"', '`']):
+        if self.key not in ["'", '"'] and not (self.stack and self.stack[-1] in ["'", '"']):
             if len(self.param) > 1 and self.param[-2:] == "${" and\
                     not (len(self.param) > 2 and self.param[-3:] == "\\${"):
                 self.stack.append("}")
                 flag = True
-            elif (self.param and self.param[-1:] in ['`', "'", '"']) and\
-                    self.key != '`' and not self.escape:
+            elif (self.param and self.param[-1:] in ["'", '"']) and\
+                not self.escape and\
+                not (self.stack and self.param[-1] in ['`'] and self.stack[-1] in ['`']):
                 self.stack.append(self.param[-1])
                 flag = True
         if not flag and self.param and self.stack and\

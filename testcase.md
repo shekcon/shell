@@ -209,3 +209,5 @@ ls -la >> ls.out
 < ls.in ls > ls.out | grep ls < ls.out
 < file > new ls | grep a
 <file >new ls | grep a
+echo ${dawdaw } || echo haha
+bash: ${dawdaw }: bad substitution

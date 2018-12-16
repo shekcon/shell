@@ -1,6 +1,8 @@
-from vitural_terminal import *
-from completion import handle_completion, get_suggest, complete_tab, complete_double_tab
 from pprint import pformat
+
+from completion import (complete_double_tab, complete_tab, get_suggest,
+                        handle_completion)
+from vitural_terminal import *
 
 
 def process_KEY_UP(input, curs_pos):
