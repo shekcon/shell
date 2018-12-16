@@ -28,6 +28,12 @@ def expand_tilde(arg):
 def tilde_expansions(args):
     for i, arg in enumerate(args):
         if '~' in arg:
+            if arg.startswith('\\'):
+                # args[i] = arg[1:]
+                continue
+            elif arg[0] in ('\'', '\"'):
+                # args[i] = arg[1:-1]
+                continue
             if '=' in arg:
                 key, new_args = arg.split('=', 1)
                 if check_name(key):
@@ -41,10 +47,18 @@ def tilde_expansions(args):
 def parameter_expansions(args):
     exit_value = 0
     for i, arg in enumerate(args):
-        if arg == '$' or '$' not in arg or arg.startswith('\''):
+        if not arg:
             continue
-        if arg.startswith('\"'):
-            arg = arg[1:-1]
+        if arg == '$' or '$' not in arg:
+            continue
+        if arg[0] in ('"', "'",'`', '(') and arg[-1] in ('"', "'",'`', ')'):
+            args[i] = arg[1:-1]
+            continue
+        # if arg.startswith('\"'):
+        #     arg = arg[1:-1]
+        if arg.startswith('\\'):
+            args[i] = arg[1:]
+            continue
         arg = path.expandvars(arg)
         if '$?' in arg:
             arg = arg.replace('$?', os.environ['?'])
@@ -71,5 +85,5 @@ def path_expansions(args):
     return exit_value, args
 
 
-if __name__ == "__main__":
-    print(path_expansions(['echo', '$PATH', '${LOGNAME }', 'intek']))
+# if __name__ == "__main__":
+#     print(path_expansions(['echo', '$PATH', '${LOGNAME }', 'intek']))
